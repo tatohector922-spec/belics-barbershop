@@ -1,0 +1,15 @@
+[
+  {
+    "id": "1788113085614",
+    "clientName": "hector ",
+    "clientPhone": "6654534554",
+    "barberName": "Héctor (Master Barber)",
+    "appointmentDate": "2026-08-30",
+    "appointmentTime": "10:00 AM",
+    "service": "Corte Ejecutivo & Moderno",
+    "price": 350,
+    "note": "Sin notas adicionales.",
+    "status": "confirmada",
+    "createdAt": "2026-08-30T18:04:45.614Z"
+  }
+]
