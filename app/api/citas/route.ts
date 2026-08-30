@@ -11,7 +11,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('Appointment')
       .select('*')
-      .order('createdAt', { ascending: false });
+      .order('id', { ascending: false });
 
     if (error) {
       console.error("Error GET Supabase:", error);
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // Mapeo exacto para asegurar que los campos coincidan con cualquier variante del formulario
+    // Estructura limpia sin forzar un ID de tipo string para evitar el choque con enteros de la BD
     const nuevaCita = {
       clientName: body.clientName || body.client || body.nombre || 'Cliente',
       clientPhone: body.clientPhone || body.phone || body.telefono || 'S/N',
