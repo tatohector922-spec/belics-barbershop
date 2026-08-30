@@ -7,7 +7,8 @@ import Link from 'next/link';
 export default function AdminDashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [totpCode, setTotpCode] = useState('');
-  const [adminTab, setAdminTab] = useState<'today' | 'week' | 'month' | 'year' | 'pending' | 'cancelled' | 'barbers'>('today');
+  // Cambiamos el inicio predeterminado a 'pending' para que al entrar vea las citas nuevas de inmediato
+  const [adminTab, setAdminTab] = useState<'today' | 'week' | 'month' | 'year' | 'pending' | 'cancelled' | 'barbers'>('pending');
   const [selectedBarberFilter, setSelectedBarberFilter] = useState<'Héctor (Master Barber)' | 'Alexis (Senior Barber)'>('Héctor (Master Barber)');
 
   // Citas reales obtenidas desde la base de datos (Prisma / API)
@@ -19,11 +20,10 @@ export default function AdminDashboardPage() {
       const res = await fetch('/api/citas');
       const data = await res.json();
       if (Array.isArray(data)) {
-        // Mapeamos los campos para que coincidan con los nombres que usa tu panel
         const formatted = data.map((item: any) => ({
           id: item.id,
           client: item.clientName,
-          service: item.service || 'Corte General', // Valor por defecto si no viene
+          service: item.service || 'Corte General',
           barber: item.barberName,
           time: item.appointmentTime,
           phone: item.clientPhone,
@@ -42,7 +42,6 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchAppointments();
-      // Actualizar cada 5 segundos en tiempo real
       const interval = setInterval(fetchAppointments, 5000);
       return () => clearInterval(interval);
     }
@@ -77,7 +76,7 @@ export default function AdminDashboardPage() {
       });
       const data = await res.json();
       if (data.success) {
-        fetchAppointments(); // Recargamos la lista actualizada
+        fetchAppointments();
       }
     } catch (err) {
       console.error('Error al actualizar estado:', err);
@@ -106,8 +105,7 @@ export default function AdminDashboardPage() {
   const filteredAppointments = appointments.filter(appt => {
     if (adminTab === 'pending') return appt.status === 'pending';
     if (adminTab === 'cancelled') return appt.status === 'cancelled';
-    if (appt.status !== 'confirmed') return false;
-    if (adminTab === 'today') return appt.date === todayStr;
+    if (adminTab === 'today') return appt.date === todayStr; // Muestra todas las de hoy sin importar si están pendientes o confirmadas
     return true; 
   });
 
@@ -211,13 +209,13 @@ export default function AdminDashboardPage() {
           {/* PESTAÑAS DE NAVEGACIÓN DEL PANEL */}
           <div className="flex flex-wrap gap-2 bg-neutral-900/60 p-3 rounded-2xl border border-neutral-800">
             {[
-              { id: 'today', label: 'Hoy (Confirmadas)' },
+              { id: 'pending', label: `📥 Pendientes (${appointments.filter(a => a.status === 'pending').length})` },
+              { id: 'today', label: '📅 Citas de Hoy' },
               { id: 'week', label: 'Semana' },
               { id: 'month', label: 'Mes' },
               { id: 'year', label: 'Año' },
-              { id: 'pending', label: `Pendientes (${appointments.filter(a => a.status === 'pending').length})` },
               { id: 'cancelled', label: `Canceladas (${appointments.filter(a => a.status === 'cancelled').length})` },
-              { id: 'barbers', label: 'Vista Barberos' },
+              { id: 'barbers', label: '✂️ Vista Barberos' },
             ].map((tab) => (
               <button 
                 key={tab.id}
@@ -292,6 +290,11 @@ export default function AdminDashboardPage() {
                       {appt.status === 'pending' && (
                         <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black uppercase">
                           Por Confirmar
+                        </span>
+                      )}
+                      {appt.status === 'confirmed' && (
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 font-black uppercase">
+                          Confirmada
                         </span>
                       )}
                     </div>
