@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+const SUPABASE_URL = 'https://lhtxvemwfjutxgofyeoc.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxodHh2ZW13Zmp1dHhnb2Z5ZW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3Nzc4NTksImV4cCI6MjA4NjM1Mzg1OX0.qXQ5g7Q5l7b6s7b6s7b6s7b6s7b6s7b6s7b6s7b6s7b';
 
 export async function GET() {
   try {
-    const citas = await prisma.appointment.findMany({
-      orderBy: { createdAt: 'desc' },
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/Appointment?select=*&order=createdAt.desc`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+      },
     });
-    return NextResponse.json(citas);
+    const data = await res.json();
+    return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -20,21 +22,31 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const nuevaCita = await prisma.appointment.create({
-      data: {
-        clientName: body.clientName || body.client || 'Cliente',
-        clientPhone: body.clientPhone || body.phone || 'S/N',
-        barberName: body.barberName || body.barber || 'Héctor (Master Barber)',
-        appointmentDate: body.appointmentDate || body.date || new Date().toISOString().split('T')[0],
-        appointmentTime: body.appointmentTime || body.time || '10:00 AM',
-        service: body.service || 'Corte General',
-        price: Number(body.price) || 350,
-        note: body.note || 'Sin notas',
-        status: 'pendiente',
+    const nuevaCita = {
+      clientName: body.clientName || body.client || 'Cliente',
+      clientPhone: body.clientPhone || body.phone || 'S/N',
+      barberName: body.barberName || body.barber || 'Héctor (Master Barber)',
+      appointmentDate: body.appointmentDate || body.date || new Date().toISOString().split('T')[0],
+      appointmentTime: body.appointmentTime || body.time || '10:00 AM',
+      service: body.service || 'Corte General',
+      price: Number(body.price) || 350,
+      note: body.note || 'Sin notas',
+      status: 'pendiente',
+    };
+
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/Appointment`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
       },
+      body: JSON.stringify(nuevaCita),
     });
 
-    return NextResponse.json({ success: true, appointment: nuevaCita });
+    const data = await res.json();
+    return NextResponse.json({ success: true, appointment: Array.isArray(data) ? data[0] : nuevaCita });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -45,12 +57,19 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const { id, status } = body;
 
-    const citaActualizada = await prisma.appointment.update({
-      where: { id: String(id) },
-      data: { status },
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/Appointment?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify({ status }),
     });
 
-    return NextResponse.json({ success: true, appointment: citaActualizada });
+    const data = await res.json();
+    return NextResponse.json({ success: true, appointment: data });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -65,8 +84,12 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'ID no proporcionado' }, { status: 400 });
     }
 
-    await prisma.appointment.delete({
-      where: { id: String(id) },
+    await fetch(`${SUPABASE_URL}/rest/v1/Appointment?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+      },
     });
 
     return NextResponse.json({ success: true });
