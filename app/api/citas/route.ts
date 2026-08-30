@@ -1,17 +1,31 @@
 import { NextResponse } from 'next/server';
 
 const SUPABASE_URL = 'https://lhtxvemwfjutxgofyeoc.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxodHh2ZW13Zmp1dHhnb2Z5ZW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3Nzc4NTksImV4cCI6MjA4NjM1Mzg1OX0.qXQ5g7Q5l7b6s7b6s7b6s7b6s7b6s7b6s7b6s7b6s7b';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxodHh2ZW13Zmp1dHhnb2Z5ZW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3Nzc4NTksImV4cCI6MjA4NjM1Mzg1OX0.qXQ5g7Q5l7b6s7b6s7b6s7b6s7b6s7b6s7b6s7b';
 
 export async function GET() {
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/Appointment?select=*&order=createdAt.desc`, {
+    // Intentamos consultar la tabla Appointment (con A mayúscula como la creó Prisma)
+    let res = await fetch(`${SUPABASE_URL}/rest/v1/Appointment?select=*&order=createdAt.desc`, {
       headers: {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
       },
     });
-    const data = await res.json();
+    
+    let data = await res.json();
+
+    // Si por alguna razón la tabla estuviera en minúsculas, intentamos como respaldo
+    if (!Array.isArray(data)) {
+      res = await fetch(`${SUPABASE_URL}/rest/v1/appointment?select=*&order=createdAt.desc`, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+        },
+      });
+      data = await res.json();
+    }
+
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
