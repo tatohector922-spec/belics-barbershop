@@ -14,7 +14,6 @@ export async function GET() {
       .order('id', { ascending: false });
 
     if (error) {
-      console.error("Error GET Supabase:", error);
       return NextResponse.json([]);
     }
 
@@ -28,7 +27,6 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // Estructura limpia sin forzar un ID de tipo string para evitar el choque con enteros de la BD
     const nuevaCita = {
       clientName: body.clientName || body.client || body.nombre || 'Cliente',
       clientPhone: body.clientPhone || body.phone || body.telefono || 'S/N',
@@ -47,8 +45,9 @@ export async function POST(request: Request) {
       .select();
 
     if (error) {
-      console.error("Error detallado de Supabase en POST:", error);
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      console.error("ERROR SUPABASE:", error);
+      // Devolvemos el error exacto al frontend para verlo en pantalla
+      return NextResponse.json({ success: false, error: error.message, details: error.details }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, appointment: data ? data[0] : nuevaCita });
