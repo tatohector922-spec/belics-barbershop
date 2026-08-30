@@ -5,27 +5,14 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 export async function GET() {
   try {
-    // Intentamos consultar la tabla Appointment (con A mayúscula como la creó Prisma)
-    let res = await fetch(`${SUPABASE_URL}/rest/v1/Appointment?select=*&order=createdAt.desc`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/Appointment?select=*&order=createdAt.desc`, {
       headers: {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
       },
     });
     
-    let data = await res.json();
-
-    // Si por alguna razón la tabla estuviera en minúsculas, intentamos como respaldo
-    if (!Array.isArray(data)) {
-      res = await fetch(`${SUPABASE_URL}/rest/v1/appointment?select=*&order=createdAt.desc`, {
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-        },
-      });
-      data = await res.json();
-    }
-
+    const data = await res.json();
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
