@@ -1,18 +1,35 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = 'https://lhtxvemwfjutxgofyeoc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxodHh2ZW13Zmp1dHhnb2Z5ZW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3Nzc4NTksImV4cCI6MjA4NjM1Mzg1OX0.qXQ5g7Q5l7b6s7b6s7b6s7b6s7b6s7b6s7b6s7b';
 
+// Inicializamos el cliente oficial de Supabase
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
 export async function GET() {
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/Appointment?select=*&order=createdAt.desc`, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-      },
-    });
-    
-    const data = await res.json();
+    // Intentamos consultar la tabla 'Appointment' (como la creó Prisma)
+    let { data, error } = await supabase
+      .from('Appointment')
+      .select('*')
+      .order('createdAt', { ascending: false });
+
+    // Si da error o viene vacío, intentamos con minúsculas 'appointment'
+    if (error || !data || data.length === 0) {
+      const resAlt = await supabase
+        .from('appointment')
+        .select('*')
+        .order('createdAt', { ascending: false });
+      data = resAlt.data;
+      error = resAlt.error;
+    }
+
+    if (error) {
+      console.error("Error de Supabase GET:", error);
+      return NextResponse.json([]);
+    }
+
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -35,19 +52,28 @@ export async function POST(request: Request) {
       status: 'pendiente',
     };
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/Appointment`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation',
-      },
-      body: JSON.stringify(nuevaCita),
-    });
+    // Insertamos usando el cliente oficial en 'Appointment'
+    let { data, error } = await supabase
+      .from('Appointment')
+      .insert([nuevaCita])
+      .select();
 
-    const data = await res.json();
-    return NextResponse.json({ success: true, appointment: Array.isArray(data) ? data[0] : nuevaCita });
+    // Si falla, intentamos en minúsculas
+    if (error) {
+      const resAlt = await supabase
+        .from('appointment')
+        .insert([nuevaCita])
+        .select();
+      data = resAlt.data;
+      error = resAlt.error;
+    }
+
+    if (error) {
+      console.error("Error de Supabase POST:", error);
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, appointment: data ? data[0] : nuevaCita });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -58,18 +84,26 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const { id, status } = body;
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/Appointment?id=eq.${id}`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation',
-      },
-      body: JSON.stringify({ status }),
-    });
+    let { data, error } = await supabase
+      .from('Appointment')
+      .update({ status })
+      .eq('id', id)
+      .select();
 
-    const data = await res.json();
+    if (error) {
+      const resAlt = await supabase
+        .from('appointment')
+        .update({ status })
+        .eq('id', id)
+        .select();
+      data = resAlt.data;
+      error = resAlt.error;
+    }
+
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
     return NextResponse.json({ success: true, appointment: data });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -85,13 +119,22 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'ID no proporcionado' }, { status: 400 });
     }
 
-    await fetch(`${SUPABASE_URL}/rest/v1/Appointment?id=eq.${id}`, {
-      method: 'DELETE',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-      },
-    });
+    let { error } = await supabase
+      .from('Appointment')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      const resAlt = await supabase
+        .from('appointment')
+        .delete()
+        .eq('id', id);
+      error = resAlt.error;
+    }
+
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
