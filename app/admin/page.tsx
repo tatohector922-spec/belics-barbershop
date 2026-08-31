@@ -71,12 +71,12 @@ export default function AdminDashboardPage() {
       if (Array.isArray(data)) {
         const formatted = data.map((item: any, index: number) => ({
           id: item.id || index.toString(),
-          client: item.clientName || item.client || item.nombre || 'Cliente',
+          client: item.clientname || item.clientName || item.client || item.nombre || 'Cliente',
           service: item.service || item.corte || 'Corte General',
-          barber: item.barberName || item.barber || item.barbero || 'Héctor (Master Barber)',
-          time: item.appointmentTime || item.time || item.hora || '10:00 AM',
-          phone: item.clientPhone || item.phone || item.telefono || 'S/N',
-          date: item.appointmentDate || item.date || item.fecha || new Date().toISOString().split('T')[0],
+          barber: item.barbername || item.barberName || item.barber || item.barbero || 'Héctor (Master Barber)',
+          time: item.appointmenttime || item.appointmentTime || item.time || item.hora || '10:00 AM',
+          phone: item.clientphone || item.clientPhone || item.phone || item.telefono || 'S/N',
+          date: item.appointmentdate || item.appointmentDate || item.date || item.fecha || new Date().toISOString().split('T')[0],
           note: item.note || item.nota || 'Sin notas adicionales.',
           status: item.status || 'pendiente',
           price: Number(item.price || item.precio || 350)
