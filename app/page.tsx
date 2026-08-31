@@ -27,7 +27,7 @@ export default function BelicsMasterApp() {
     { name: 'Gustavo', role: 'Gordito / Barber' }
   ];
 
-  // Generar horarios de 40 en 40 minutos según el día (Domingos cierra a las 4 PM, Lunes a Sábado a las 8 PM)
+  // Generar horarios estrictamente de 40 en 40 minutos (De 11:00 AM a 8:00 PM, Domingos de 11:00 AM a 4:00 PM)
   const getAvailableTimesForDate = (dateStr: string) => {
     if (!dateStr) return [];
     
@@ -39,7 +39,7 @@ export default function BelicsMasterApp() {
     const endHour = dayOfWeek === 0 ? 16 : 20; 
     
     let times = [];
-    let currentHour = 11;
+    let currentHour = 11; // Empieza a las 11:00 AM
     let currentMinute = 0;
 
     while (currentHour < endHour || (currentHour === endHour && currentMinute === 0)) {
@@ -50,7 +50,7 @@ export default function BelicsMasterApp() {
       
       times.push(`${formattedHour}:${formattedMinute} ${period}`);
 
-      // Incrementar 40 minutos
+      // Incrementar exactamente 40 minutos
       currentMinute += 40;
       if (currentMinute >= 60) {
         currentHour += Math.floor(currentMinute / 60);
