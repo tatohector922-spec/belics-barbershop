@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = 'https://lhtxvemwfjutxgofyeoc.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxodHh2ZW13Zmp1dHhnb2Z5ZW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3Nzc4NTksImV4cCI6MjA4NjM1Mzg1OX0.qXQ5g7Q5l7b6s7b6s7b6s7b6s7b6s7b6s7b6s7b';
+const SUPABASE_KEY = 'sb_publishable_pT0qCOznBWl030ZK0VO03Q_bp7mvdVT';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -18,7 +18,6 @@ export async function POST(request: Request) {
     const p256dh = subscription.keys?.p256dh || '';
     const auth = subscription.keys?.auth || '';
 
-    // Guardamos o actualizamos en Supabase de forma segura
     const { error } = await supabase
       .from('PushSubscriptions')
       .upsert([{ endpoint, p256dh, auth }], { onConflict: 'endpoint' });

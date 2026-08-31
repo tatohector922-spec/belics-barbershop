@@ -3,11 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
 
 const SUPABASE_URL = 'https://lhtxvemwfjutxgofyeoc.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxodHh2ZW13Zmp1dHhnb2Z5ZW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3Nzc4NTksImV4cCI6MjA4NjM1Mzg1OX0.qXQ5g7Q5l7b6s7b6s7b6s7b6s7b6s7b6s7b6s7b';
+const SUPABASE_KEY = 'sb_publishable_pT0qCOznBWl030ZK0VO03Q_bp7mvdVT';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Configuración segura de llaves VAPID
 try {
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT || 'mailto:tatohector@gmail.com',
@@ -15,7 +14,7 @@ try {
     process.env.VAPID_PRIVATE_KEY || 'l46VSYypZ0mP2tF_xJC6mf4G4LrzddjckuSQB2c7uzs'
   );
 } catch (e) {
-  console.error("Error configurando webpush:", e);
+  console.error("Error push:", e);
 }
 
 export async function GET() {
@@ -36,63 +35,66 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
+    const clientName = body.clientName || body.client || body.nombre || 'Cliente';
+    const clientPhone = body.clientPhone || body.phone || body.telefono || 'S/N';
+    const barberName = body.barberName || body.barber || body.barbero || 'Héctor (Master Barber)';
+    const appointmentDate = body.appointmentDate || body.date || body.fecha || new Date().toISOString().split('T')[0];
+    const appointmentTime = body.appointmentTime || body.time || body.hora || '10:00 AM';
+    const service = body.service || body.corte || 'Corte General';
+    const price = Number(body.price || body.precio) || 350;
+    const note = body.note || body.nota || 'Sin notas';
+    const status = 'pendiente';
+
     const nuevaCita = {
-      clientName: body.clientName || body.client || body.nombre || 'Cliente',
-      clientPhone: body.clientPhone || body.phone || body.telefono || 'S/N',
-      barberName: body.barberName || body.barber || body.barbero || 'Héctor (Master Barber)',
-      appointmentDate: body.appointmentDate || body.date || body.fecha || new Date().toISOString().split('T')[0],
-      appointmentTime: body.appointmentTime || body.time || body.hora || '10:00 AM',
-      service: body.service || body.corte || 'Corte General',
-      price: Number(body.price || body.precio) || 350,
-      note: body.note || body.nota || 'Sin notas',
-      status: 'pendiente',
+      clientName,
+      clientphone: clientPhone,
+      clientPhone,
+      barberName,
+      barbername: barberName,
+      appointmentDate,
+      appointmentdate: appointmentDate,
+      appointmentTime,
+      appointmenttime: appointmentTime,
+      service,
+      price,
+      note,
+      status
     };
 
-    // 1. Inserción principal en Supabase (Esto NUNCA debe fallar por culpa de las notificaciones)
     const { data, error } = await supabase
       .from('Appointment')
       .insert([nuevaCita])
       .select();
 
     if (error) {
-      console.error("Error al insertar cita en Supabase:", error);
+      console.error("Error crítico de Supabase:", error);
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
-    // 2. Bloque push aislado en un bloque try-catch totalmente independiente para que no afecte la cita
     try {
-      const { data: subsData, error: subsError } = await supabase
-        .from('PushSubscriptions')
-        .select('*');
-
-      if (!subsError && subsData && subsData.length > 0) {
+      const { data: subsData } = await supabase.from('PushSubscriptions').select('*');
+      if (subsData && subsData.length > 0) {
         const payload = JSON.stringify({
           title: "Belics Barbershop - Nueva Cita",
-          body: `Cliente: ${nuevaCita.clientName} con ${nuevaCita.barberName} (${nuevaCita.appointmentDate} - ${nuevaCita.appointmentTime})`
+          body: `Cliente: ${clientName} con ${barberName} (${appointmentDate} - ${appointmentTime})`
         });
 
         for (const sub of subsData) {
           if (sub.endpoint && sub.p256dh && sub.auth) {
-            const pushSubscription = {
+            webpush.sendNotification({
               endpoint: sub.endpoint,
-              keys: {
-                p256dh: sub.p256dh,
-                auth: sub.auth
-              }
-            };
-            webpush.sendNotification(pushSubscription, payload).catch(err => {
-              console.error("Error enviando push individual:", err);
-            });
+              keys: { p256dh: sub.p256dh, auth: sub.auth }
+            }, payload).catch(() => {});
           }
         }
       }
-    } catch (pushErr) {
-      console.log("Aviso: Notificación push omitida por seguridad:", pushErr);
+    } catch (e) {
+      console.log("Push omitido:", e);
     }
 
     return NextResponse.json({ success: true, appointment: data ? data[0] : nuevaCita });
   } catch (error: any) {
-    console.error("Error general en POST citas:", error);
+    console.error("Excepción en POST:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
