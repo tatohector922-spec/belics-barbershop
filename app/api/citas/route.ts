@@ -35,26 +35,22 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const clientName = body.clientName || body.client || body.nombre || 'Cliente';
-    const clientPhone = body.clientPhone || body.phone || body.telefono || 'S/N';
-    const barberName = body.barberName || body.barber || body.barbero || 'Héctor (Master Barber)';
-    const appointmentDate = body.appointmentDate || body.date || body.fecha || new Date().toISOString().split('T')[0];
-    const appointmentTime = body.appointmentTime || body.time || body.hora || '10:00 AM';
+    const clientname = body.clientName || body.client || body.nombre || 'Cliente';
+    const clientphone = body.clientPhone || body.phone || body.telefono || 'S/N';
+    const barbername = body.barberName || body.barber || body.barbero || 'Héctor (Master Barber)';
+    const appointmentdate = body.appointmentDate || body.date || body.fecha || new Date().toISOString().split('T')[0];
+    const appointmenttime = body.appointmentTime || body.time || body.hora || '10:00 AM';
     const service = body.service || body.corte || 'Corte General';
     const price = Number(body.price || body.precio) || 350;
     const note = body.note || body.nota || 'Sin notas';
     const status = 'pendiente';
 
     const nuevaCita = {
-      clientName,
-      clientphone: clientPhone,
-      clientPhone,
-      barberName,
-      barbername: barberName,
-      appointmentDate,
-      appointmentdate: appointmentDate,
-      appointmentTime,
-      appointmenttime: appointmentTime,
+      clientname,
+      clientphone,
+      barbername,
+      appointmentdate,
+      appointmenttime,
       service,
       price,
       note,
@@ -76,7 +72,7 @@ export async function POST(request: Request) {
       if (subsData && subsData.length > 0) {
         const payload = JSON.stringify({
           title: "Belics Barbershop - Nueva Cita",
-          body: `Cliente: ${clientName} con ${barberName} (${appointmentDate} - ${appointmentTime})`
+          body: `Cliente: ${clientname} con ${barbername} (${appointmentdate} - ${appointmenttime})`
         });
 
         for (const sub of subsData) {
