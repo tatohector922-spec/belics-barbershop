@@ -7,16 +7,26 @@ import { MapPin, Phone, Calendar, Clock, Scissors, Star, ShieldCheck, Trash2, Lo
 export default function BelicsMasterApp() {
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Formulario del cliente con campo de texto libre para el corte
+  // Formulario del cliente
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientService, setClientService] = useState('Corte Ejecutivo & Moderno');
-  const [clientBarber, setClientBarber] = useState('Héctor (Master Barber)');
+  const [clientBarber, setClientBarber] = useState('Cholo');
   const [clientTime, setClientTime] = useState('10:00 AM');
   const [clientDate, setClientDate] = useState(new Date().toISOString().split('T')[0]);
   const [clientNote, setClientNote] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
-  
+
+  // Estado para leer qué barberos están ausentes según el admin
+  const [barberUnavailable, setBarberUnavailable] = useState<{ [key: string]: boolean }>({});
+
+  // Lista de los 3 barberos oficiales
+  const barbersList = [
+    { name: 'Cholo', role: 'Master Barber' },
+    { name: 'Eduardo', role: 'Senior Barber' },
+    { name: 'Gustavo', role: 'Gordito / Barber' }
+  ];
+
   // Horarios generados de 30 en 30 minutos (10:00 AM a 8:00 PM)
   const availableTimes = [
     '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
@@ -31,14 +41,45 @@ export default function BelicsMasterApp() {
       setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    // Cargar los estados de ausencia guardados por el admin
+    const loadUnavailableStatus = () => {
+      const savedUnavailable = localStorage.getItem('belics_barber_unavailable');
+      if (savedUnavailable) {
+        try {
+          setBarberUnavailable(JSON.parse(savedUnavailable));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
+    loadUnavailableStatus();
+    // Escuchar cambios por si el admin actualiza en otra pestaña o se recarga
+    window.addEventListener('storage', loadUnavailableStatus);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('storage', loadUnavailableStatus);
+    };
   }, []);
+
+  // Función para saber si un barbero específico está ausente en la fecha seleccionada
+  const isBarberOffOnDate = (barberName: string, date: string) => {
+    return !!barberUnavailable[`${barberName}_${date}`];
+  };
 
   // FUNCIÓN CONECTADA DIRECTAMENTE AL BACKEND PARA GUARDAR LA CITA REAL
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName || !clientPhone || !clientService) {
       alert('Por favor completa tu nombre, teléfono y el corte que deseas.');
+      return;
+    }
+
+    // Validar si el barbero seleccionado está ausente en esa fecha
+    if (clientBarber !== 'Cualquier Barbero Disponible' && isBarberOffOnDate(clientBarber, clientDate)) {
+      alert(`Lo sentimos, el barbero ${clientBarber} no está disponible en la fecha seleccionada. Por favor elige otro.`);
       return;
     }
 
@@ -83,7 +124,7 @@ export default function BelicsMasterApp() {
       
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[500px] bg-amber-500/10 blur-[160px] rounded-full pointer-events-none -z-10 animate-pulse duration-[8000ms]"></div>
 
-      {/* BARRA DE NAVEGACIÓN CON LOGO CIRCULAR (image.png) Y ENLACE ADMIN A PANTALLA COMPLETA */}
+      {/* BARRA DE NAVEGACIÓN */}
       <nav className={`fixed w-full z-50 transition-all duration-500 ${isScrolled ? 'bg-[#070708]/90 backdrop-blur-2xl py-3 border-b border-neutral-800/80 shadow-[0_15px_40px_rgba(0,0,0,0.9)]' : 'bg-transparent py-5'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           
@@ -108,7 +149,6 @@ export default function BelicsMasterApp() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* BOTÓN ADMIN REDIRIGIENDO A LA PANTALLA COMPLETA /admin */}
             <Link 
               href="/admin"
               className="bg-neutral-900/80 border border-neutral-800 text-amber-400 px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-neutral-800 hover:border-amber-400/50 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2 shadow-lg backdrop-blur-md"
@@ -258,7 +298,7 @@ export default function BelicsMasterApp() {
         </div>
       </section>
 
-      {/* RESERVAS CON HORARIOS DE 30 EN 30 MINUTOS */}
+      {/* RESERVAS CON BLOQUEO AUTOMÁTICO DE BARBEROS AUSENTES */}
       <section id="agendar" className="py-24 bg-neutral-900/10 border-t border-neutral-900 relative">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -267,7 +307,7 @@ export default function BelicsMasterApp() {
               Aparta tu <span className="text-amber-400">Lugar</span>
             </h2>
             <p className="text-neutral-400 text-sm max-w-lg mx-auto font-light">
-              Escribe libremente el corte o servicio que deseas, elige tu horario disponible y asegura tu espacio.
+              Escribe libremente el corte o servicio que deseas, elige tu horario disponible y asegura tu espacio con tu barbero de preferencia.
             </p>
           </div>
 
@@ -325,10 +365,26 @@ export default function BelicsMasterApp() {
                   onChange={(e) => setClientBarber(e.target.value)}
                   className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-amber-400 transition-colors text-sm cursor-pointer"
                 >
-                  <option value="Héctor (Master Barber)">Héctor (Master Barber)</option>
-                  <option value="Alexis (Senior Barber)">Alexis (Senior Barber)</option>
                   <option value="Cualquier Barbero Disponible">Cualquier Barbero Disponible</option>
+                  {barbersList.map((barber) => {
+                    const isOff = isBarberOffOnDate(barber.name, clientDate);
+                    return (
+                      <option 
+                        key={barber.name} 
+                        value={barber.name} 
+                        disabled={isOff}
+                      >
+                        {barber.name} ({barber.role}) {isOff ? ' — [NO DISPONIBLE / AUSENTE]' : '— [Disponible]'}
+                      </option>
+                    );
+                  })}
                 </select>
+                {/* Advertencia visual si el barbero seleccionado está ausente */}
+                {clientBarber !== 'Cualquier Barbero Disponible' && isBarberOffOnDate(clientBarber, clientDate) && (
+                  <p className="text-[11px] text-red-400 mt-1.5 font-semibold">
+                    ⚠️ {clientBarber} se encuentra ausente en la fecha seleccionada. Por favor selecciona otro barbero.
+                  </p>
+                )}
               </div>
             </div>
 
