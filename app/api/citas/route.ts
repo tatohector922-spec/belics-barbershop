@@ -80,7 +80,13 @@ export async function POST(request: Request) {
             webpush.sendNotification({
               endpoint: sub.endpoint,
               keys: { p256dh: sub.p256dh, auth: sub.auth }
-            }, payload).catch(() => {});
+            }, payload).catch(async (err) => {
+              // Si el navegador del celular revocó el token o expiró, lo borramos de Supabase automáticamente
+              if (err.statusCode === 410 || err.statusCode === 404) {
+                console.log("Suscripción push expirada o eliminada por el navegador, limpiando...");
+                await supabase.from('PushSubscriptions').delete().eq('endpoint', sub.endpoint);
+              }
+            });
           }
         }
       }
