@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import * as otplib from 'otplib';
+// @ts-ignore
+import otplib from 'otplib';
 
 export async function POST(request: Request) {
   try {
     const { token } = await request.json();
-
     const secret = process.env.TOTP_SECRET || 'JBSWY3DPEHPK3PXP'; 
 
-    const authenticator = otplib.authenticator || (otplib as any).default?.authenticator;
+    const authenticator = otplib.authenticator || otplib;
     const isValid = authenticator.check(token, secret);
 
     if (isValid) {

@@ -10,7 +10,7 @@ export default function AdminDashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authCodeInput, setAuthCodeInput] = useState('');
   const [adminTab, setAdminTab] = useState<'today' | 'week' | 'month' | 'year' | 'pending' | 'cancelled' | 'barbers'>('pending');
-  const [selectedBarberFilter, setSelectedBarberFilter] = useState<'Cholo' | 'Eduardo' | 'Gustavo'>('Cholo');
+  const [selectedBarberFilter, setSelectedBarberFilter] = useState<string>('Cholo');
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
@@ -367,7 +367,7 @@ export default function AdminDashboardPage() {
                 <div className="flex gap-3 bg-neutral-950 p-4 rounded-2xl border border-neutral-800 items-center justify-between flex-wrap">
                   <span className="text-xs font-bold text-neutral-300 uppercase">Seleccionar Estación:</span>
                   <div className="flex gap-2">
-                    {(barbersList as const).map((b) => (
+                    {barbersList.map((b) => (
                       <button 
                         key={b}
                         onClick={() => setSelectedBarberFilter(b)}
