@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import { authenticator } from 'otplib';
+import otplib from 'otplib';
 
 export async function POST(request: Request) {
   try {
     const { token } = await request.json();
 
-    // Utiliza la clave definida en tu .env o usa la de prueba por defecto
     const secret = process.env.TOTP_SECRET || 'JBSWY3DPEHPK3PXP'; 
 
-    const isValid = authenticator.check(token, secret);
+    // Usamos el validador integrado de otplib de manera segura para evitar errores de exportación
+    const isValid = otplib.authenticator.check(token, secret);
 
     if (isValid) {
       return NextResponse.json({ success: true });
