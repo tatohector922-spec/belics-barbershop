@@ -13,11 +13,15 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
 
-  // Al cargar, revisa si ya habías iniciado sesión antes para no pedir el código otra vez
+  // Al cargar, revisa si ya habías iniciado sesión antes y si las notificaciones ya estaban activas
   useEffect(() => {
     const savedAuth = localStorage.getItem('belics_admin_auth');
     if (savedAuth === 'true') {
       setIsAuthenticated(true);
+    }
+    const savedPushStatus = localStorage.getItem('belics_push_subscribed');
+    if (savedPushStatus === 'true') {
+      setPushSubscribed(true);
     }
   }, []);
 
@@ -30,25 +34,32 @@ export default function AdminDashboardPage() {
 
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
-      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCX9iMW4caZMYynEPYwbpWlJC23I37xMESR-cJwunLmSoQcxyF3ULBpInxpRhm7s8ah0HqbvbIpMPXlduwt7r7w';
+      await navigator.serviceWorker.ready; // Asegura que el service worker esté listo y despierto
       
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCX9iMW4caZMYynEPYwbpWlJC23I37xMESR-cJwunLmSoQcxyF3ULBpInxpRhm7s8ah0HqbvbIpMPXlduwt7r7w';
       const convertedVapidKey = urlBase64ToUint8Array(publicKey);
+      
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey
       });
 
-      await fetch('/api/push', {
+      const res = await fetch('/api/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(subscription)
       });
 
-      setPushSubscribed(true);
-      alert('¡Dispositivo vinculado con éxito para recibir notificaciones push!');
+      if (res.ok) {
+        setPushSubscribed(true);
+        localStorage.setItem('belics_push_subscribed', 'true');
+        alert('¡Dispositivo vinculado con éxito para recibir notificaciones push!');
+      } else {
+        alert('Hubo un error al guardar la suscripción en el servidor.');
+      }
     } catch (err) {
       console.error('Error al suscribir a push:', err);
-      alert('Hubo un error al activar las notificaciones en este dispositivo.');
+      alert('Permiso denegado o error al activar. Asegúrate de tener la app abierta desde tu pantalla de inicio.');
     }
   };
 
