@@ -7,6 +7,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Configuración de web-push
 webpush.setVapidDetails(
   process.env.VAPID_SUBJECT || 'mailto:tatohector@gmail.com',
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCX9iMW4caZMYynEPYwbpWlJC23I37xMESR-cJwunLmSoQcxyF3ULBpInxpRhm7s8ah0HqbvbIpMPXlduwt7r7w',
@@ -20,7 +21,10 @@ export async function GET() {
       .select('*')
       .order('id', { ascending: false });
 
-    if (error) return NextResponse.json([]);
+    if (error) {
+      return NextResponse.json([]);
+    }
+
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -49,23 +53,27 @@ export async function POST(request: Request) {
       .select();
 
     if (error) {
+      console.error("Error al insertar en Supabase:", error);
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
-    // Disparar la push notification
+    // Intentamos disparar la notificación push si hay dispositivos registrados
     try {
-      const { getSubscriptions } = await import('@/app/api/push/route');
-      const subs = getSubscriptions();
-      const payload = JSON.stringify({
-        title: "Belics Barbershop - Nueva Cita",
-        body: `Cliente: ${nuevaCita.clientName} con ${nuevaCita.barberName} (${nuevaCita.appointmentDate} - ${nuevaCita.appointmentTime})`
-      });
+      // Importamos las suscripciones directamente desde la ruta de push
+      const pushModule = await import('@/app/api/push/route');
+      if (pushModule && typeof pushModule.getSubscriptions === 'function') {
+        const subs = pushModule.getSubscriptions();
+        const payload = JSON.stringify({
+          title: "Belics Barbershop - Nueva Cita",
+          body: `Cliente: ${nuevaCita.clientName} con ${nuevaCita.barberName} (${nuevaCita.appointmentDate} a las ${nuevaCita.appointmentTime})`
+        });
 
-      for (const sub of subs) {
-        webpush.sendNotification(sub, payload).catch(err => console.error("Push error:", err));
+        for (const sub of subs) {
+          webpush.sendNotification(sub, payload).catch(err => console.error("Push error:", err));
+        }
       }
-    } catch (e) {
-      console.log("Error menor en push", e);
+    } catch (pushErr) {
+      console.log("Aviso push omitido o sin suscriptores activos:", pushErr);
     }
 
     return NextResponse.json({ success: true, appointment: data ? data[0] : nuevaCita });
@@ -78,8 +86,17 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json();
     const { id, status } = body;
-    const { data, error } = await supabase.from('Appointment').update({ status }).eq('id', id).select();
-    if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+
+    const { data, error } = await supabase
+      .from('Appointment')
+      .update({ status })
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
     return NextResponse.json({ success: true, appointment: data });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -90,9 +107,20 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ success: false, error: 'ID no proporcionado' }, { status: 400 });
-    const { error } = await supabase.from('Appointment').delete().eq('id', id);
-    if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'ID no proporcionado' }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from('Appointment')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
