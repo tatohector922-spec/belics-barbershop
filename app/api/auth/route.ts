@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import otplib from 'otplib';
+import * as otplib from 'otplib';
 
 export async function POST(request: Request) {
   try {
@@ -7,8 +7,8 @@ export async function POST(request: Request) {
 
     const secret = process.env.TOTP_SECRET || 'JBSWY3DPEHPK3PXP'; 
 
-    // Usamos el validador integrado de otplib de manera segura para evitar errores de exportación
-    const isValid = otplib.authenticator.check(token, secret);
+    const authenticator = otplib.authenticator || (otplib as any).default?.authenticator;
+    const isValid = authenticator.check(token, secret);
 
     if (isValid) {
       return NextResponse.json({ success: true });
