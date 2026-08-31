@@ -1,21 +1,30 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, Lock, Users, DollarSign, TrendingUp, CheckCircle2, XCircle, Trash2, ArrowLeft, RefreshCcw, Bell } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ShieldCheck, Lock, Users, DollarSign, TrendingUp, CheckCircle2, XCircle, Trash2, ArrowLeft, RefreshCcw, Bell, UserX, UserCheck } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [totpCode, setTotpCode] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
   const [adminTab, setAdminTab] = useState<'today' | 'week' | 'month' | 'year' | 'pending' | 'cancelled' | 'barbers'>('pending');
-  const [selectedBarberFilter, setSelectedBarberFilter] = useState<'Héctor (Master Barber)' | 'Alexis (Senior Barber)'>('Héctor (Master Barber)');
+  const [selectedBarberFilter, setSelectedBarberFilter] = useState<'Cholo' | 'Eduardo' | 'Gustavo'>('Cholo');
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
 
-  // Al cargar, revisa si ya habías iniciado sesión antes y si las notificaciones ya estaban activas
+  // Estado para controlar qué barberos están descansando o inactivos hoy
+  const [barberStatus, setBarberStatus] = useState<{ [key: string]: boolean }>({
+    'Cholo': true,
+    'Eduardo': true,
+    'Gustavo': true,
+  });
+
+  // Al cargar, revisa la autenticación, los estados y las notificaciones
   useEffect(() => {
-    const savedAuth = localStorage.getItem('belics_admin_auth');
+    const savedAuth = localStorage.getItem('auth');
     if (savedAuth === 'true') {
       setIsAuthenticated(true);
     }
@@ -23,9 +32,23 @@ export default function AdminDashboardPage() {
     if (savedPushStatus === 'true') {
       setPushSubscribed(true);
     }
+    const savedBarbers = localStorage.getItem('belics_barbers_status');
+    if (savedBarbers) {
+      try {
+        setBarberStatus(JSON.parse(savedBarbers));
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }, []);
 
-  // Botón para activar las notificaciones push nativas en tu celular
+  // Función para alternar el estado de descanso de un barbero
+  const toggleBarberStatus = (barberName: string) => {
+    const updated = { ...barberStatus, [barberName]: !barberStatus[barberName] };
+    setBarberStatus(updated);
+    localStorage.setItem('belics_barbers_status', JSON.stringify(updated));
+  };
+
   const subscribeButtonHandler = async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       alert('Tu navegador no soporta notificaciones push.');
@@ -34,7 +57,7 @@ export default function AdminDashboardPage() {
 
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
-      await navigator.serviceWorker.ready; // Asegura que el service worker esté listo y despierto
+      await navigator.serviceWorker.ready;
       
       const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCX9iMW4caZMYynEPYwbpWlJC23I37xMESR-cJwunLmSoQcxyF3ULBpInxpRhm7s8ah0HqbvbIpMPXlduwt7r7w';
       const convertedVapidKey = urlBase64ToUint8Array(publicKey);
@@ -59,7 +82,7 @@ export default function AdminDashboardPage() {
       }
     } catch (err) {
       console.error('Error al suscribir a push:', err);
-      alert('Permiso denegado o error al activar. Asegúrate de tener la app abierta desde tu pantalla de inicio.');
+      alert('Permiso denegado o error al activar.');
     }
   };
 
@@ -84,7 +107,7 @@ export default function AdminDashboardPage() {
           id: item.id || index.toString(),
           client: item.clientname || item.clientName || item.client || item.nombre || 'Cliente',
           service: item.service || item.corte || 'Corte General',
-          barber: item.barbername || item.barberName || item.barber || item.barbero || 'Héctor (Master Barber)',
+          barber: item.barbername || item.barberName || item.barber || item.barbero || 'Cholo',
           time: item.appointmenttime || item.appointmentTime || item.time || item.hora || '10:00 AM',
           phone: item.clientphone || item.clientPhone || item.phone || item.telefono || 'S/N',
           date: item.appointmentdate || item.appointmentDate || item.date || item.fecha || new Date().toISOString().split('T')[0],
@@ -109,19 +132,19 @@ export default function AdminDashboardPage() {
     }
   }, [isAuthenticated]);
 
-  const handleVerify2FA = async (e: React.FormEvent) => {
+  const handleVerifyPassword = (e: React.FormEvent) => {
     e.preventDefault();
-    if (totpCode.length === 6) {
+    if (passwordInput === '1234') {
       setIsAuthenticated(true);
-      localStorage.setItem('belics_admin_auth', 'true');
+      localStorage.setItem('auth', 'true');
     } else {
-      alert('Código incorrecto.');
+      alert('Contraseña incorrecta.');
     }
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    localStorage.removeItem('belics_admin_auth');
+    localStorage.removeItem('auth');
   };
 
   const updateStatus = async (id: string, newStatus: string) => {
@@ -176,18 +199,17 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <h3 className="text-xl font-bold">Acceso Gerencial Seguro</h3>
-              <p className="text-xs text-neutral-400">Introduce el código de autenticación</p>
+              <p className="text-xs text-neutral-400">Introduce la contraseña de administración</p>
             </div>
           </div>
 
-          <form onSubmit={handleVerify2FA} className="space-y-4">
+          <form onSubmit={handleVerifyPassword} className="space-y-4">
             <input 
-              type="text" 
-              maxLength={6}
-              value={totpCode} 
-              onChange={(e) => setTotpCode(e.target.value)} 
-              placeholder="000000"
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-4 text-white text-center tracking-[0.6em] text-2xl font-black focus:outline-none focus:border-amber-400 transition-colors"
+              type="password" 
+              value={passwordInput} 
+              onChange={(e) => setPasswordInput(e.target.value)} 
+              placeholder="Contraseña"
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-4 text-white text-center tracking-[0.3em] text-xl font-black focus:outline-none focus:border-amber-400 transition-colors"
               required
               autoFocus
             />
@@ -205,8 +227,8 @@ export default function AdminDashboardPage() {
                 <ShieldCheck className="text-green-400" size={30} />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-white">Panel con Push Móvil</h1>
-                <p className="text-xs text-green-400 font-medium">● Vincula tu celular para alertas directas</p>
+                <h1 className="text-2xl sm:text-3xl font-black text-white">Panel de Control General</h1>
+                <p className="text-xs text-green-400 font-medium">● Gestión de turnos y disponibilidad de equipo</p>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
@@ -214,7 +236,7 @@ export default function AdminDashboardPage() {
                 onClick={subscribeButtonHandler} 
                 className="bg-amber-400 text-neutral-950 px-4 py-3 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-amber-300 transition-colors shadow-lg"
               >
-                <Bell size={16} /> {pushSubscribed ? 'Dispositivo Vinculado ✓' : 'Activar Notificaciones en este Celular'}
+                <Bell size={16} /> {pushSubscribed ? 'Dispositivo Vinculado ✓' : 'Activar Notificaciones'}
               </button>
               <button 
                 onClick={fetchAppointments} 
@@ -225,6 +247,40 @@ export default function AdminDashboardPage() {
               <button onClick={handleLogout} className="text-xs text-neutral-400 hover:text-red-400 border border-neutral-800 bg-neutral-950 px-5 py-3 rounded-xl font-bold transition-colors">
                 Cerrar Sesión
               </button>
+            </div>
+          </div>
+
+          {/* SECCIÓN NUEVA: CONTROL DE DISPONIBILIDAD DE BARBEROS */}
+          <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-3xl space-y-4">
+            <h2 className="text-sm font-black text-amber-400 uppercase tracking-wider">⚡ Estado de Disponibilidad de Barberos (Descanso / Inactivo)</h2>
+            <p className="text-xs text-neutral-400">Si un barbero descansa o no se presenta hoy, desactívalo para bloquear automáticamente su selección a los clientes en la página web.</p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              {[
+                { name: 'Cholo', role: 'Master Barber' },
+                { name: 'Eduardo', role: 'Senior Barber' },
+                { name: 'Gustavo', role: 'Gordito / Barber' },
+              ].map((barber) => {
+                const isActive = barberStatus[barber.name] ?? true;
+                return (
+                  <div key={barber.name} className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${isActive ? 'bg-neutral-950 border-neutral-800' : 'bg-red-950/20 border-red-900/50 opacity-75'}`}>
+                    <div>
+                      <p className="font-bold text-white text-sm">{barber.name}</p>
+                      <p className="text-[11px] text-neutral-400">{barber.role}</p>
+                      <span className={`inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${isActive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                        {isActive ? 'Disponible' : 'En Descanso / Inactivo'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => toggleBarberStatus(barber.name)}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all ${isActive ? 'bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border border-red-500/30' : 'bg-green-500 text-neutral-950 hover:bg-green-400 shadow-lg'}`}
+                    >
+                      {isActive ? <UserX size={16} /> : <UserCheck size={16} />}
+                      {isActive ? 'Marcar Descanso' : 'Activar'}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -278,18 +334,15 @@ export default function AdminDashboardPage() {
                 <div className="flex gap-3 bg-neutral-950 p-4 rounded-2xl border border-neutral-800 items-center justify-between flex-wrap">
                   <span className="text-xs font-bold text-neutral-300 uppercase">Seleccionar Estación:</span>
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => setSelectedBarberFilter('Héctor (Master Barber)')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold ${selectedBarberFilter === 'Héctor (Master Barber)' ? 'bg-amber-400 text-neutral-950 font-black' : 'bg-neutral-900 text-neutral-400'}`}
-                    >
-                      Héctor (Master Barber)
-                    </button>
-                    <button 
-                      onClick={() => setSelectedBarberFilter('Alexis (Senior Barber)')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold ${selectedBarberFilter === 'Alexis (Senior Barber)' ? 'bg-amber-400 text-neutral-950 font-black' : 'bg-neutral-900 text-neutral-400'}`}
-                    >
-                      Alexis (Senior Barber)
-                    </button>
+                    {(['Cholo', 'Eduardo', 'Gustavo'] as const).map((b) => (
+                      <button 
+                        key={b}
+                        onClick={() => setSelectedBarberFilter(b)}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold ${selectedBarberFilter === b ? 'bg-amber-400 text-neutral-950 font-black' : 'bg-neutral-900 text-neutral-400'}`}
+                      >
+                        {b}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
