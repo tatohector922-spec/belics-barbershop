@@ -1,28 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Lock, Users, DollarSign, TrendingUp, CheckCircle2, XCircle, Trash2, ArrowLeft, RefreshCcw, Bell, UserX, UserCheck } from 'lucide-react';
+import { ShieldCheck, Lock, Users, DollarSign, TrendingUp, CheckCircle2, XCircle, Trash2, ArrowLeft, RefreshCcw, Bell, UserX, UserCheck, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
+  const [authCodeInput, setAuthCodeInput] = useState('');
   const [adminTab, setAdminTab] = useState<'today' | 'week' | 'month' | 'year' | 'pending' | 'cancelled' | 'barbers'>('pending');
   const [selectedBarberFilter, setSelectedBarberFilter] = useState<'Cholo' | 'Eduardo' | 'Gustavo'>('Cholo');
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
 
-  // Estado para controlar qué barberos están descansando o inactivos hoy
-  const [barberStatus, setBarberStatus] = useState<{ [key: string]: boolean }>({
-    'Cholo': true,
-    'Eduardo': true,
-    'Gustavo': true,
-  });
+  const [barberUnavailable, setBarberUnavailable] = useState<{ [key: string]: boolean }>({});
 
-  // Al cargar, revisa la autenticación, los estados y las notificaciones
+  const todayStr = new Date().toISOString().split('T')[0];
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+
   useEffect(() => {
     const savedAuth = localStorage.getItem('auth');
     if (savedAuth === 'true') {
@@ -32,21 +31,21 @@ export default function AdminDashboardPage() {
     if (savedPushStatus === 'true') {
       setPushSubscribed(true);
     }
-    const savedBarbers = localStorage.getItem('belics_barbers_status');
-    if (savedBarbers) {
+    const savedUnavailable = localStorage.getItem('belics_barber_unavailable');
+    if (savedUnavailable) {
       try {
-        setBarberStatus(JSON.parse(savedBarbers));
+        setBarberUnavailable(JSON.parse(savedUnavailable));
       } catch (e) {
         console.error(e);
       }
     }
   }, []);
 
-  // Función para alternar el estado de descanso de un barbero
-  const toggleBarberStatus = (barberName: string) => {
-    const updated = { ...barberStatus, [barberName]: !barberStatus[barberName] };
-    setBarberStatus(updated);
-    localStorage.setItem('belics_barbers_status', JSON.stringify(updated));
+  const toggleUnavailableDay = (barberName: string, dateStr: string) => {
+    const key = `${barberName}_${dateStr}`;
+    const updated = { ...barberUnavailable, [key]: !barberUnavailable[key] };
+    setBarberUnavailable(updated);
+    localStorage.setItem('belics_barber_unavailable', JSON.stringify(updated));
   };
 
   const subscribeButtonHandler = async () => {
@@ -132,13 +131,26 @@ export default function AdminDashboardPage() {
     }
   }, [isAuthenticated]);
 
-  const handleVerifyPassword = (e: React.FormEvent) => {
+  const handleVerifyAuthCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput === '1234') {
-      setIsAuthenticated(true);
-      localStorage.setItem('auth', 'true');
-    } else {
-      alert('Contraseña incorrecta.');
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: authCodeInput })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setIsAuthenticated(true);
+        localStorage.setItem('auth', 'true');
+      } else {
+        alert('Código de Google Authenticator incorrecto o expirado.');
+        setAuthCodeInput('');
+      }
+    } catch (err) {
+      console.error('Error de autenticación:', err);
+      alert('Error al conectar con el servidor para validar el código.');
     }
   };
 
@@ -170,7 +182,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
   const todayConfirmedAppointments = appointments.filter(a => a.date === todayStr && a.status === 'confirmada');
   const totalRevenueToday = todayConfirmedAppointments.reduce((acc, curr) => acc + curr.price, 0);
 
@@ -180,6 +191,8 @@ export default function AdminDashboardPage() {
     if (adminTab === 'today') return appt.date === todayStr;
     return true;
   });
+
+  const barbersList = ['Cholo', 'Eduardo', 'Gustavo'];
 
   return (
     <div className="min-h-screen bg-[#040405] text-neutral-100 font-sans p-6 sm:p-10 relative">
@@ -198,23 +211,24 @@ export default function AdminDashboardPage() {
               <Lock className="text-amber-400" size={24} />
             </div>
             <div>
-              <h3 className="text-xl font-bold">Acceso Gerencial Seguro</h3>
-              <p className="text-xs text-neutral-400">Introduce la contraseña de administración</p>
+              <h3 className="text-xl font-bold">Autenticación de 2 Pasos</h3>
+              <p className="text-xs text-neutral-400">Introduce el código de Google Authenticator</p>
             </div>
           </div>
 
-          <form onSubmit={handleVerifyPassword} className="space-y-4">
+          <form onSubmit={handleVerifyAuthCode} className="space-y-4">
             <input 
-              type="password" 
-              value={passwordInput} 
-              onChange={(e) => setPasswordInput(e.target.value)} 
-              placeholder="Contraseña"
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-4 text-white text-center tracking-[0.3em] text-xl font-black focus:outline-none focus:border-amber-400 transition-colors"
+              type="text" 
+              maxLength={6}
+              value={authCodeInput} 
+              onChange={(e) => setAuthCodeInput(e.target.value)} 
+              placeholder="000 000"
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-4 text-white text-center tracking-[0.4em] text-2xl font-black focus:outline-none focus:border-amber-400 transition-colors"
               required
               autoFocus
             />
             <button type="submit" className="w-full bg-amber-400 text-neutral-950 font-black py-4 rounded-xl hover:bg-amber-300 transition-all shadow-lg tracking-wide text-sm mt-2">
-              Validar y Entrar al Sistema
+              Verificar Código 2FA
             </button>
           </form>
         </div>
@@ -250,34 +264,53 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* SECCIÓN NUEVA: CONTROL DE DISPONIBILIDAD DE BARBEROS */}
-          <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-3xl space-y-4">
-            <h2 className="text-sm font-black text-amber-400 uppercase tracking-wider">⚡ Estado de Disponibilidad de Barberos (Descanso / Inactivo)</h2>
-            <p className="text-xs text-neutral-400">Si un barbero descansa o no se presenta hoy, desactívalo para bloquear automáticamente su selección a los clientes en la página web.</p>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              {[
-                { name: 'Cholo', role: 'Master Barber' },
-                { name: 'Eduardo', role: 'Senior Barber' },
-                { name: 'Gustavo', role: 'Gordito / Barber' },
-              ].map((barber) => {
-                const isActive = barberStatus[barber.name] ?? true;
+          <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-3xl space-y-6">
+            <div>
+              <h2 className="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                <Calendar size={18} /> Control de Ausencias (Hoy y Mañana)
+              </h2>
+              <p className="text-xs text-neutral-400 mt-1">
+                Marca qué barberos <strong>no van a estar disponibles hoy o mañana</strong> para que se refleje automáticamente y se bloqueen sus turnos.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {barbersList.map((barberName) => {
+                const isOffToday = !!barberUnavailable[`${barberName}_${todayStr}`];
+                const isOffTomorrow = !!barberUnavailable[`${barberName}_${tomorrowStr}`];
+
                 return (
-                  <div key={barber.name} className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${isActive ? 'bg-neutral-950 border-neutral-800' : 'bg-red-950/20 border-red-900/50 opacity-75'}`}>
-                    <div>
-                      <p className="font-bold text-white text-sm">{barber.name}</p>
-                      <p className="text-[11px] text-neutral-400">{barber.role}</p>
-                      <span className={`inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${isActive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                        {isActive ? 'Disponible' : 'En Descanso / Inactivo'}
-                      </span>
+                  <div key={barberName} className="bg-neutral-950 border border-neutral-800 p-5 rounded-2xl space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-bold text-white text-base">{barberName}</h3>
+                      <span className="text-[10px] bg-neutral-900 border border-neutral-800 px-2.5 py-1 rounded-full text-neutral-400 font-semibold">Barber Station</span>
                     </div>
-                    <button
-                      onClick={() => toggleBarberStatus(barber.name)}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all ${isActive ? 'bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border border-red-500/30' : 'bg-green-500 text-neutral-950 hover:bg-green-400 shadow-lg'}`}
-                    >
-                      {isActive ? <UserX size={16} /> : <UserCheck size={16} />}
-                      {isActive ? 'Marcar Descanso' : 'Activar'}
-                    </button>
+
+                    <div className="space-y-2 pt-1">
+                      <button
+                        onClick={() => toggleUnavailableDay(barberName, todayStr)}
+                        className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-between transition-all ${
+                          isOffToday 
+                            ? 'bg-red-500/20 border border-red-500/50 text-red-400' 
+                            : 'bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800'
+                        }`}
+                      >
+                        <span>Ausente Hoy ({todayStr})</span>
+                        {isOffToday ? <UserX size={16} /> : <UserCheck size={16} />}
+                      </button>
+
+                      <button
+                        onClick={() => toggleUnavailableDay(barberName, tomorrowStr)}
+                        className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-between transition-all ${
+                          isOffTomorrow 
+                            ? 'bg-red-500/20 border border-red-500/50 text-red-400' 
+                            : 'bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800'
+                        }`}
+                      >
+                        <span>Ausente Mañana ({tomorrowStr})</span>
+                        {isOffTomorrow ? <UserX size={16} /> : <UserCheck size={16} />}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -334,7 +367,7 @@ export default function AdminDashboardPage() {
                 <div className="flex gap-3 bg-neutral-950 p-4 rounded-2xl border border-neutral-800 items-center justify-between flex-wrap">
                   <span className="text-xs font-bold text-neutral-300 uppercase">Seleccionar Estación:</span>
                   <div className="flex gap-2">
-                    {(['Cholo', 'Eduardo', 'Gustavo'] as const).map((b) => (
+                    {(barbersList as const).map((b) => (
                       <button 
                         key={b}
                         onClick={() => setSelectedBarberFilter(b)}
