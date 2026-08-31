@@ -12,8 +12,8 @@ export default function BelicsMasterApp() {
   const [clientPhone, setClientPhone] = useState('');
   const [clientService, setClientService] = useState('Corte Ejecutivo & Moderno');
   const [clientBarber, setClientBarber] = useState('Cholo');
-  const [clientTime, setClientTime] = useState('10:00 AM');
   const [clientDate, setClientDate] = useState(new Date().toISOString().split('T')[0]);
+  const [clientTime, setClientTime] = useState('');
   const [clientNote, setClientNote] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
@@ -27,14 +27,48 @@ export default function BelicsMasterApp() {
     { name: 'Gustavo', role: 'Gordito / Barber' }
   ];
 
-  // Horarios generados de 30 en 30 minutos (10:00 AM a 8:00 PM)
-  const availableTimes = [
-    '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
-    '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM',
-    '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM',
-    '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM',
-    '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM'
-  ];
+  // Generar horarios de 40 en 40 minutos según el día (Domingos cierra a las 4 PM, Lunes a Sábado a las 8 PM)
+  const getAvailableTimesForDate = (dateStr: string) => {
+    if (!dateStr) return [];
+    
+    // Obtener el día de la semana (0 = Domingo, 1 = Lunes, ..., 6 = Sábado)
+    const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
+    
+    // Domingo (0): de 11:00 AM a 4:00 PM (16:00)
+    // Lunes a Sábado (1-6): de 11:00 AM a 8:00 PM (20:00)
+    const endHour = dayOfWeek === 0 ? 16 : 20; 
+    
+    let times = [];
+    let currentHour = 11;
+    let currentMinute = 0;
+
+    while (currentHour < endHour || (currentHour === endHour && currentMinute === 0)) {
+      const period = currentHour >= 12 ? 'PM' : 'AM';
+      const displayHour = currentHour > 12 ? currentHour - 12 : currentHour;
+      const formattedHour = displayHour.toString().padStart(2, '0');
+      const formattedMinute = currentMinute.toString().padStart(2, '0');
+      
+      times.push(`${formattedHour}:${formattedMinute} ${period}`);
+
+      // Incrementar 40 minutos
+      currentMinute += 40;
+      if (currentMinute >= 60) {
+        currentHour += Math.floor(currentMinute / 60);
+        currentMinute = currentMinute % 60;
+      }
+    }
+
+    return times;
+  };
+
+  const availableTimes = getAvailableTimesForDate(clientDate);
+
+  // Asegurar que la hora seleccionada por defecto sea válida al cambiar de fecha
+  useEffect(() => {
+    if (availableTimes.length > 0 && !availableTimes.includes(clientTime)) {
+      setClientTime(availableTimes[0]);
+    }
+  }, [clientDate, availableTimes]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -42,7 +76,6 @@ export default function BelicsMasterApp() {
     };
     window.addEventListener('scroll', handleScroll);
 
-    // Cargar los estados de ausencia guardados por el admin
     const loadUnavailableStatus = () => {
       const savedUnavailable = localStorage.getItem('belics_barber_unavailable');
       if (savedUnavailable) {
@@ -55,7 +88,6 @@ export default function BelicsMasterApp() {
     };
 
     loadUnavailableStatus();
-    // Escuchar cambios por si el admin actualiza en otra pestaña o se recarga
     window.addEventListener('storage', loadUnavailableStatus);
 
     return () => {
@@ -64,12 +96,10 @@ export default function BelicsMasterApp() {
     };
   }, []);
 
-  // Función para saber si un barbero específico está ausente en la fecha seleccionada
   const isBarberOffOnDate = (barberName: string, date: string) => {
     return !!barberUnavailable[`${barberName}_${date}`];
   };
 
-  // FUNCIÓN CONECTADA DIRECTAMENTE AL BACKEND PARA GUARDAR LA CITA REAL
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName || !clientPhone || !clientService) {
@@ -77,7 +107,6 @@ export default function BelicsMasterApp() {
       return;
     }
 
-    // Validar si el barbero seleccionado está ausente en esa fecha
     if (clientBarber !== 'Cualquier Barbero Disponible' && isBarberOffOnDate(clientBarber, clientDate)) {
       alert(`Lo sentimos, el barbero ${clientBarber} no está disponible en la fecha seleccionada. Por favor elige otro.`);
       return;
@@ -298,7 +327,7 @@ export default function BelicsMasterApp() {
         </div>
       </section>
 
-      {/* RESERVAS CON BLOQUEO AUTOMÁTICO DE BARBEROS AUSENTES */}
+      {/* RESERVAS CON BLOQUEO AUTOMÁTICO Y HORARIOS DE 40 MINUTOS */}
       <section id="agendar" className="py-24 bg-neutral-900/10 border-t border-neutral-900 relative">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -307,7 +336,7 @@ export default function BelicsMasterApp() {
               Aparta tu <span className="text-amber-400">Lugar</span>
             </h2>
             <p className="text-neutral-400 text-sm max-w-lg mx-auto font-light">
-              Escribe libremente el corte o servicio que deseas, elige tu horario disponible y asegura tu espacio con tu barbero de preferencia.
+              Lunes a Sábado de 11:00 AM a 8:00 PM · Domingos de 11:00 AM a 4:00 PM (Turnos de 40 en 40 min).
             </p>
           </div>
 
@@ -379,7 +408,6 @@ export default function BelicsMasterApp() {
                     );
                   })}
                 </select>
-                {/* Advertencia visual si el barbero seleccionado está ausente */}
                 {clientBarber !== 'Cualquier Barbero Disponible' && isBarberOffOnDate(clientBarber, clientDate) && (
                   <p className="text-[11px] text-red-400 mt-1.5 font-semibold">
                     ⚠️ {clientBarber} se encuentra ausente en la fecha seleccionada. Por favor selecciona otro barbero.
@@ -400,7 +428,7 @@ export default function BelicsMasterApp() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase mb-2 tracking-wider">Hora Disponible (Cada 30 min)</label>
+                <label className="block text-xs font-bold text-neutral-400 uppercase mb-2 tracking-wider">Hora Disponible (Cada 40 min)</label>
                 <select 
                   value={clientTime}
                   onChange={(e) => setClientTime(e.target.value)}
