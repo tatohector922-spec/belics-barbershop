@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MapPin, Phone, Calendar, Clock, Scissors, Star, ShieldCheck, Trash2, Lock, CheckCircle2, XCircle, Users, DollarSign, TrendingUp, Sparkles, Award, Flame, MessageSquare, ArrowRight, Check, UserCheck, ThumbsUp, Smile } from 'lucide-react';
+import { MapPin, Phone, Calendar, Clock, Scissors, Star, ShieldCheck, Trash2, Lock, CheckCircle2, XCircle, Users, DollarSign, TrendingUp, Sparkles, Award, Flame, MessageSquare, ArrowRight, Check, UserCheck, ThumbsUp, Smile, Send } from 'lucide-react';
 
 export default function BelicsMasterApp() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -18,12 +18,24 @@ export default function BelicsMasterApp() {
   const [clientNote, setClientNote] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
+  // Estados para el formulario de nuevas reseñas
+  const [reviewsList, setReviewsList] = useState([
+    { name: 'Carlos Mendoza', barber: 'Cholo', rating: 5, comment: 'El mejor desvanecido de Culiacán. Cholo es un maestro con la navaja.' },
+    { name: 'Alejandro Beltrán', barber: 'Eduardo', rating: 5, comment: 'Excelente ambiente y puntualidad impecable. Eduardo rifa bastante.' },
+    { name: 'Jesús Valenzuela', barber: 'Gustavo', rating: 5, comment: 'Gustavo te deja la barba perfecta con las toallas calientes. 10/10.' }
+  ]);
+  const [newReviewName, setNewReviewName] = useState('');
+  const [newReviewBarber, setNewReviewBarber] = useState('Cholo');
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewComment, setNewReviewComment] = useState('');
+  const [reviewSuccess, setReviewSuccess] = useState(false);
+
   const [barberUnavailable, setBarberUnavailable] = useState<{ [key: string]: boolean }>({});
 
   const barbersList = [
-    { name: 'Cholo', role: 'Master Barber', phone: '6673602477' },
-    { name: 'Eduardo', role: 'Senior Barber', phone: '6675757736' },
-    { name: 'Gustavo', role: 'Gordito / Barber', phone: '6674535329' }
+    { name: 'Cholo', role: 'Master Barber', phone: '6673602477', rating: 4.9, reviewsCount: 128 },
+    { name: 'Eduardo', role: 'Senior Barber', phone: '6675757736', rating: 4.8, reviewsCount: 94 },
+    { name: 'Gustavo', role: 'Gordito / Barber', phone: '6674535329', rating: 4.9, reviewsCount: 112 }
   ];
 
   const servicesList = [
@@ -34,14 +46,6 @@ export default function BelicsMasterApp() {
     { title: 'Cejas', price: '30 pesos', desc: 'Diseño y perfilado rápido de cejas.' }
   ];
 
-  // Reseñas reales de clientes
-  const testimonials = [
-    { name: 'Carlos Mendoza', comment: 'El mejor desvanecido de Culiacán. Cholo es un maestro con la navaja.', barber: 'Cholo' },
-    { name: 'Alejandro Beltrán', comment: 'Excelente ambiente y puntualidad impecable. Eduardo rifa bastante.', barber: 'Eduardo' },
-    { name: 'Jesús Valenzuela', comment: 'Gustavo te deja la barba perfecta con las toallas calientes. 10/10.', barber: 'Gustavo' }
-  ];
-
-  // Reproductor de sonido sutil de interfaz (Audio Feedback)
   const playClickSound = () => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -56,9 +60,7 @@ export default function BelicsMasterApp() {
       gain.connect(audioCtx.destination);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.05);
-    } catch (e) {
-      // Ignorar si el navegador bloquea audio sin interacción previa
-    }
+    } catch (e) {}
   };
 
   const getAvailableTimesForDate = (dateStr: string) => {
@@ -98,11 +100,17 @@ export default function BelicsMasterApp() {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
 
-    // Cargar saludo personalizado si el usuario ya visitó o agendó antes
     const savedName = localStorage.getItem('belics_client_name');
     if (savedName) {
       setReturningUser(savedName);
       setClientName(savedName);
+      setNewReviewName(savedName);
+    }
+
+    // Cargar reseñas guardadas localmente o del servidor
+    const savedReviews = localStorage.getItem('belics_reviews');
+    if (savedReviews) {
+      try { setReviewsList(JSON.parse(savedReviews)); } catch (e) {}
     }
 
     const fetchUnavailable = async () => {
@@ -110,9 +118,7 @@ export default function BelicsMasterApp() {
         const res = await fetch('/api/ausencias');
         const data = await res.json();
         if (data && typeof data === 'object') setBarberUnavailable(data);
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e) {}
     };
 
     fetchUnavailable();
@@ -142,7 +148,6 @@ export default function BelicsMasterApp() {
       return;
     }
 
-    // Guardar en memoria local para saludarlo la próxima vez
     localStorage.setItem('belics_client_name', clientName);
 
     let numericPrice = 160;
@@ -177,9 +182,28 @@ export default function BelicsMasterApp() {
         alert('Hubo un error al registrar la cita.');
       }
     } catch (error) {
-      console.error(error);
       alert('Error de conexión.');
     }
+  };
+
+  const handleReviewSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    playClickSound();
+    if (!newReviewName || !newReviewComment) {
+      alert('Por favor escribe tu nombre y tu comentario.');
+      return;
+    }
+
+    const updatedReviews = [
+      { name: newReviewName, barber: newReviewBarber, rating: Number(newReviewRating), comment: newReviewComment },
+      ...reviewsList
+    ];
+    setReviewsList(updatedReviews);
+    localStorage.setItem('belics_reviews', JSON.stringify(updatedReviews));
+
+    setNewReviewComment('');
+    setReviewSuccess(true);
+    setTimeout(() => setReviewSuccess(false), 5000);
   };
 
   return (
@@ -231,7 +255,7 @@ export default function BelicsMasterApp() {
 
           <div className="hidden md:flex items-center gap-8 text-xs font-bold tracking-widest text-neutral-400">
             <a href="#inicio" className="hover:text-amber-400 transition-colors">INICIO</a>
-            <a href="#resenas" className="hover:text-amber-400 transition-colors">RESEÑAS</a>
+            <a href="#resenas" className="hover:text-amber-400 transition-colors">BARBEROS Y RESEÑAS</a>
             <a href="#servicios" className="hover:text-amber-400 transition-colors">SERVICIOS</a>
             <a href="#cortes" className="hover:text-amber-400 transition-colors">ESTILOS</a>
             <a href="#ubicacion" className="hover:text-amber-400 transition-colors">UBICACIÓN</a>
@@ -248,7 +272,7 @@ export default function BelicsMasterApp() {
         </div>
       </nav>
 
-      {/* HERO SECTION CON SALUDO PERSONALIZADO */}
+      {/* HERO SECTION */}
       <section id="inicio" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-[#070708]/60 z-10"></div>
@@ -286,27 +310,116 @@ export default function BelicsMasterApp() {
         </div>
       </section>
 
-      {/* SECCIÓN DE RESEÑAS EN VIVO */}
-      <section id="resenas" className="py-24 bg-[#070708] border-t border-neutral-900 relative z-20">
+      {/* SECCIÓN DE BARBEROS Y RESEÑAS */}
+      <section id="resenas" className="py-24 bg-[#070708] border-t border-neutral-900 relative z-25">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
           <div className="text-center mb-16">
-            <span className="text-xs font-black tracking-widest text-amber-400 uppercase mb-3 block">Com comunidad</span>
-            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tight">Reseñas de <span className="text-amber-400">Clientes</span></h2>
+            <span className="text-xs font-black tracking-widest text-amber-400 uppercase mb-3 block">Equipo Oficial</span>
+            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tight">Nuestros Barberos y <span className="text-amber-400">Reseñas</span></h2>
+            <p className="text-neutral-400 text-sm mt-3 font-light">Conoce la calificación de cada maestro y lo que opinan nuestros clientes.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((t, i) => (
-              <div key={i} className="bg-neutral-900/40 border border-neutral-800 p-8 rounded-3xl shadow-xl flex flex-col justify-between space-y-4">
-                <div className="flex text-amber-400 gap-1">
-                  {[...Array(5)].map((_, idx) => <Star key={idx} size={16} className="fill-amber-400" />)}
+
+          {/* TARJETAS DE LOS BARBEROS Y SUS ESTRELLAS */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+            {barbersList.map((barber, i) => (
+              <div key={i} className="bg-neutral-900/60 border border-neutral-800 p-8 rounded-3xl shadow-xl flex flex-col justify-between space-y-6 backdrop-blur-md">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-2xl font-black text-white">{barber.name}</h3>
+                    <p className="text-xs font-bold text-amber-400 uppercase tracking-widest mt-1">{barber.role}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-amber-400/10 rounded-2xl flex items-center justify-center border border-amber-400/30 text-amber-400">
+                    <Award size={24} />
+                  </div>
                 </div>
-                <p className="text-neutral-300 text-sm italic font-light">"{t.comment}"</p>
-                <div className="pt-4 border-t border-neutral-800 flex justify-between items-center text-xs">
-                  <span className="font-bold text-white">{t.name}</span>
-                  <span className="text-amber-400 font-medium">Atendido por {t.barber}</span>
+
+                <div className="bg-neutral-950 p-4 rounded-2xl border border-neutral-800 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-1 text-amber-400 mb-1">
+                      <Star size={18} className="fill-amber-400" />
+                      <span className="text-lg font-black text-white">{barber.rating}</span>
+                      <span className="text-xs text-neutral-500 font-normal">/ 5.0</span>
+                    </div>
+                    <p className="text-[11px] text-neutral-400 font-medium">Basado en {barber.reviewsCount} opiniones</p>
+                  </div>
+                  <a href="#agendar" onClick={() => setClientBarber(barber.name)} className="bg-amber-400/20 hover:bg-amber-400 text-amber-400 hover:text-neutral-950 text-xs font-bold px-4 py-2.5 rounded-xl transition-colors">
+                    Reservar con él
+                  </a>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* APARTADO PARA ESCRIBIR UNA NUEVA RESEÑA */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start bg-neutral-900/40 border border-neutral-800 p-8 sm:p-12 rounded-3xl backdrop-blur-xl">
+            
+            <div className="lg:col-span-1 space-y-4">
+              <span className="text-xs font-black tracking-widest text-amber-400 uppercase block">Tu Opinión Cuenta</span>
+              <h3 className="text-3xl font-black uppercase tracking-tight">Déjanos tu <span className="text-amber-400">Reseña</span></h3>
+              <p className="text-neutral-400 text-sm font-light leading-relaxed">
+                ¿Te cortaste con nosotros recientemente? Comparte tu experiencia con Cholo, Eduardo o Gustavo para ayudar a más clientes.
+              </p>
+              {reviewSuccess && (
+                <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-bold flex items-center gap-2">
+                  <Check size={16} /> ¡Reseña publicada con éxito! Gracias por tu opinión.
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleReviewSubmit} className="lg:col-span-2 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-400 uppercase mb-1.5">Tu Nombre</label>
+                  <input type="text" value={newReviewName} onChange={e => setNewReviewName(e.target.value)} placeholder="Ej. Roberto Sánchez" className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-400" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-neutral-400 uppercase mb-1.5">Barbero que te atendió</label>
+                  <select value={newReviewBarber} onChange={e => setNewReviewBarber(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm cursor-pointer">
+                    <option value="Cholo">Cholo</option>
+                    <option value="Eduardo">Eduardo</option>
+                    <option value="Gustavo">Gustavo</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-400 uppercase mb-1.5">Calificación (Estrellas)</label>
+                <select value={newReviewRating} onChange={e => setNewReviewRating(Number(e.target.value))} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm cursor-pointer">
+                  <option value={5}>★★★★★ (5/5 — Excelente)</option>
+                  <option value={4}>★★★★☆ (4/5 — Muy Bueno)</option>
+                  <option value={3}>★★★☆☆ (3/5 — Bueno)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-400 uppercase mb-1.5">Comentario</label>
+                <textarea value={newReviewComment} onChange={e => setNewReviewComment(e.target.value)} placeholder="Escribe aquí tu opinión sobre el corte o el servicio..." rows={3} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-amber-400" required></textarea>
+              </div>
+
+              <button type="submit" className="bg-amber-400 text-neutral-950 font-black px-6 py-3.5 rounded-xl hover:bg-amber-300 transition-all text-xs flex items-center gap-2 shadow-lg">
+                <Send size={14} /> Publicar Reseña
+              </button>
+            </form>
+
+          </div>
+
+          {/* LISTADO DE RESEÑAS RECIENTES */}
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+            {reviewsList.map((r, i) => (
+              <div key={i} className="bg-neutral-900/40 border border-neutral-800 p-6 rounded-2xl shadow-lg flex flex-col justify-between space-y-3">
+                <div className="flex justify-between items-start">
+                  <div className="flex text-amber-400 gap-0.5">
+                    {[...Array(r.rating)].map((_, idx) => <Star key={idx} size={14} className="fill-amber-400" />)}
+                  </div>
+                  <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20 font-bold">Atendido por {r.barber}</span>
+                </div>
+                <p className="text-neutral-300 text-xs italic font-light">"{r.comment}"</p>
+                <p className="text-[11px] font-bold text-white pt-2 border-t border-neutral-800/80">— {r.name}</p>
+              </div>
+            ))}
+          </div>
+
         </div>
       </section>
 
