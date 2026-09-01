@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Lock, Users, DollarSign, TrendingUp, CheckCircle2, XCircle, Trash2, ArrowLeft, RefreshCcw, Bell, UserX, UserCheck, Calendar } from 'lucide-react';
+import { ShieldCheck, Lock, Users, DollarSign, TrendingUp, CheckCircle2, XCircle, Trash2, ArrowLeft, RefreshCcw, Bell, UserX, UserCheck, Calendar, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -15,12 +15,24 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
 
+  // Estados para el modal / formulario de agregar cita manual
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
+  const [newService, setNewService] = useState('Corte (160 pesos)');
+  const [newBarber, setNewBarber] = useState('Cholo');
+  const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newTime, setNewTime] = useState('11:00 AM');
+  const [newNote, setNewNote] = useState('Creada manualmente por el admin');
+
   const [barberUnavailable, setBarberUnavailable] = useState<{ [key: string]: boolean }>({});
 
   const todayStr = new Date().toISOString().split('T')[0];
   const tomorrowDate = new Date();
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
   const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+
+  const barbersList = ['Cholo', 'Eduardo', 'Gustavo'];
 
   useEffect(() => {
     const savedAuth = localStorage.getItem('auth');
@@ -105,14 +117,14 @@ export default function AdminDashboardPage() {
         const formatted = data.map((item: any, index: number) => ({
           id: item.id || index.toString(),
           client: item.clientname || item.clientName || item.client || item.nombre || 'Cliente',
-          service: item.service || item.corte || 'Corte General',
+          service: item.service || item.corte || 'Corte',
           barber: item.barbername || item.barberName || item.barber || item.barbero || 'Cholo',
-          time: item.appointmenttime || item.appointmentTime || item.time || item.hora || '10:00 AM',
+          time: item.appointmenttime || item.appointmentTime || item.time || item.hora || '11:00 AM',
           phone: item.clientphone || item.clientPhone || item.phone || item.telefono || 'S/N',
           date: item.appointmentdate || item.appointmentDate || item.date || item.fecha || new Date().toISOString().split('T')[0],
           note: item.note || item.nota || 'Sin notas adicionales.',
           status: item.status || 'pendiente',
-          price: Number(item.price || item.precio || 350)
+          price: Number(item.price || item.precio || 160)
         }));
         setAppointments(formatted);
       }
@@ -182,6 +194,53 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Función para guardar cita manual desde el admin
+  const handleCreateManualAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClientName || !newClientPhone) {
+      alert('Por favor ingresa al menos el nombre y teléfono del cliente.');
+      return;
+    }
+
+    let numericPrice = 160;
+    if (newService.includes('120')) numericPrice = 120;
+    if (newService.includes('260')) numericPrice = 260;
+    if (newService.includes('280')) numericPrice = 280;
+    if (newService.includes('30')) numericPrice = 30;
+
+    try {
+      const response = await fetch('/api/citas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientName: newClientName,
+          clientPhone: newClientPhone,
+          service: newService,
+          barberName: newBarber,
+          appointmentDate: newDate,
+          appointmentTime: newTime,
+          note: newNote,
+          price: numericPrice,
+          status: 'confirmada' // Las hechas por el admin nacen confirmadas
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('¡Cita agregada manualmente con éxito!');
+        setShowAddModal(false);
+        setNewClientName('');
+        setNewClientPhone('');
+        fetchAppointments();
+      } else {
+        alert('Error al guardar la cita en el servidor.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error de conexión.');
+    }
+  };
+
   const todayConfirmedAppointments = appointments.filter(a => a.date === todayStr && a.status === 'confirmada');
   const totalRevenueToday = todayConfirmedAppointments.reduce((acc, curr) => acc + curr.price, 0);
 
@@ -191,8 +250,6 @@ export default function AdminDashboardPage() {
     if (adminTab === 'today') return appt.date === todayStr;
     return true;
   });
-
-  const barbersList = ['Cholo', 'Eduardo', 'Gustavo'];
 
   return (
     <div className="min-h-screen bg-[#040405] text-neutral-100 font-sans p-6 sm:p-10 relative">
@@ -247,6 +304,12 @@ export default function AdminDashboardPage() {
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               <button 
+                onClick={() => setShowAddModal(true)} 
+                className="bg-green-500 hover:bg-green-400 text-neutral-950 px-4 py-3 rounded-xl text-xs font-black flex items-center gap-2 transition-colors shadow-lg"
+              >
+                <PlusCircle size={16} /> Agregar Cita Manual
+              </button>
+              <button 
                 onClick={subscribeButtonHandler} 
                 className="bg-amber-400 text-neutral-950 px-4 py-3 rounded-xl text-xs font-black flex items-center gap-2 hover:bg-amber-300 transition-colors shadow-lg"
               >
@@ -264,13 +327,125 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
+          {/* MODAL PARA AGREGAR CITA MANUAL */}
+          {showAddModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl relative">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-black text-amber-400 flex items-center gap-2">
+                    <PlusCircle size={20} /> Crear Cita Manualmente
+                  </h3>
+                  <button onClick={() => setShowAddModal(false)} className="text-neutral-400 hover:text-white font-bold text-sm bg-neutral-800 p-2 rounded-xl">✕</button>
+                </div>
+
+                <form onSubmit={handleCreateManualAppointment} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-400 uppercase mb-1">Nombre del Cliente</label>
+                      <input 
+                        type="text" 
+                        value={newClientName} 
+                        onChange={(e) => setNewClientName(e.target.value)}
+                        placeholder="Ej. Juan Pérez"
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-400"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-400 uppercase mb-1">Teléfono</label>
+                      <input 
+                        type="text" 
+                        value={newClientPhone} 
+                        onChange={(e) => setNewClientPhone(e.target.value)}
+                        placeholder="667 000 0000"
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-400"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-400 uppercase mb-1">Servicio</label>
+                      <select 
+                        value={newService} 
+                        onChange={(e) => setNewService(e.target.value)}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-400"
+                      >
+                        <option value="Corte (160 pesos)">Corte — 160 pesos</option>
+                        <option value="Corte de niño (120 pesos)">Corte de niño — 120 pesos</option>
+                        <option value="Corte y barba (260 pesos)">Corte y barba — 260 pesos</option>
+                        <option value="Corte barba y tinte (280 pesos)">Corte barba y tinte — 280 pesos</option>
+                        <option value="Cejas (30 pesos)">Cejas — 30 pesos</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-400 uppercase mb-1">Barbero</label>
+                      <select 
+                        value={newBarber} 
+                        onChange={(e) => setNewBarber(e.target.value)}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-400"
+                      >
+                        {barbersList.map(b => <option key={b} value={b}>{b}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-400 uppercase mb-1">Fecha</label>
+                      <input 
+                        type="date" 
+                        value={newDate} 
+                        onChange={(e) => setNewDate(e.target.value)}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-400"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-400 uppercase mb-1">Hora</label>
+                      <input 
+                        type="text" 
+                        value={newTime} 
+                        onChange={(e) => setNewTime(e.target.value)}
+                        placeholder="Ej. 02:00 PM"
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-400"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-400 uppercase mb-1">Nota del Admin</label>
+                    <input 
+                      type="text" 
+                      value={newNote} 
+                      onChange={(e) => setNewNote(e.target.value)}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex gap-3">
+                    <button type="button" onClick={() => setShowAddModal(false)} className="w-1/2 bg-neutral-800 text-neutral-300 font-bold py-3.5 rounded-xl text-xs hover:bg-neutral-700">
+                      Cancelar
+                    </button>
+                    <button type="submit" className="w-1/2 bg-amber-400 text-neutral-950 font-black py-3.5 rounded-xl text-xs hover:bg-amber-300 shadow-lg">
+                      Guardar Cita
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* CONTROL DE AUSENCIAS */}
           <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-3xl space-y-6">
             <div>
               <h2 className="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
                 <Calendar size={18} /> Control de Ausencias (Hoy y Mañana)
               </h2>
               <p className="text-xs text-neutral-400 mt-1">
-                Marca qué barberos <strong>no van a estar disponibles hoy o mañana</strong> para que se refleje automáticamente y se bloqueen sus turnos.
+                Marca qué barberos <strong>no van a estar disponibles hoy o mañana</strong> para que se bloqueen sus turnos en la página principal.
               </p>
             </div>
 
