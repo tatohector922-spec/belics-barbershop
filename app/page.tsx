@@ -7,10 +7,10 @@ import { MapPin, Phone, Calendar, Clock, Scissors, Star, ShieldCheck, Trash2, Lo
 export default function BelicsMasterApp() {
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Formulario del cliente
+  // Formulario del cliente (por defecto el primer servicio de la lista nueva)
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
-  const [clientService, setClientService] = useState('Corte Ejecutivo & Moderno');
+  const [clientService, setClientService] = useState('Corte (160 pesos)');
   const [clientBarber, setClientBarber] = useState('Cholo');
   const [clientDate, setClientDate] = useState(new Date().toISOString().split('T')[0]);
   const [clientTime, setClientTime] = useState('');
@@ -25,6 +25,14 @@ export default function BelicsMasterApp() {
     { name: 'Cholo', role: 'Master Barber' },
     { name: 'Eduardo', role: 'Senior Barber' },
     { name: 'Gustavo', role: 'Gordito / Barber' }
+  ];
+
+  // Nuevos servicios oficiales con sus precios reales
+  const servicesList = [
+    { title: 'Corte', price: '160 pesos', desc: 'Corte de cabello profesional adaptado a tu estilo.' },
+    { title: 'Corte y barba', price: '260 pesos', desc: 'Corte completo y perfilado de barba con acabado impecable.' },
+    { title: 'Corte barba y tinte', price: '280 pesos', desc: 'Servicio integral de corte, barba y aplicación de tinte.' },
+    { title: 'Cejas', price: '20 pesos', desc: 'Diseño y perfilado rápido de cejas.' }
   ];
 
   // Generar horarios estrictamente de 40 en 40 minutos (De 11:00 AM a 8:00 PM, Domingos de 11:00 AM a 4:00 PM)
@@ -103,7 +111,7 @@ export default function BelicsMasterApp() {
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName || !clientPhone || !clientService) {
-      alert('Por favor completa tu nombre, teléfono y el corte que deseas.');
+      alert('Por favor completa tu nombre, teléfono y el servicio que deseas.');
       return;
     }
 
@@ -111,6 +119,12 @@ export default function BelicsMasterApp() {
       alert(`Lo sentimos, el barbero ${clientBarber} no está disponible en la fecha seleccionada. Por favor elige otro.`);
       return;
     }
+
+    // Calcular precio numérico para la base de datos
+    let numericPrice = 160;
+    if (clientService.includes('260')) numericPrice = 260;
+    if (clientService.includes('280')) numericPrice = 280;
+    if (clientService.includes('20')) numericPrice = 20;
 
     try {
       const response = await fetch('/api/citas', {
@@ -126,7 +140,7 @@ export default function BelicsMasterApp() {
           appointmentDate: clientDate,
           appointmentTime: clientTime,
           note: clientNote || 'Sin notas adicionales.',
-          price: 350
+          price: numericPrice
         }),
       });
 
@@ -137,7 +151,6 @@ export default function BelicsMasterApp() {
         setTimeout(() => setBookingSuccess(false), 5000);
         setClientName('');
         setClientPhone('');
-        setClientService('');
         setClientNote('');
       } else {
         alert('Hubo un error al registrar la cita en el sistema.');
@@ -172,7 +185,7 @@ export default function BelicsMasterApp() {
           <div className="hidden md:flex items-center gap-8 text-xs font-bold tracking-widest text-neutral-400">
             <a href="#inicio" className="hover:text-amber-400 transition-colors duration-300">INICIO</a>
             <a href="#filosofia" className="hover:text-amber-400 transition-colors duration-300">FILOSOFÍA</a>
-            <a href="#servicios" className="hover:text-amber-400 transition-colors duration-300">EXPERIENCIA</a>
+            <a href="#servicios" className="hover:text-amber-400 transition-colors duration-300">SERVICIOS</a>
             <a href="#cortes" className="hover:text-amber-400 transition-colors duration-300">ESTILOS</a>
             <a href="#ubicacion" className="hover:text-amber-400 transition-colors duration-300">UBICACIÓN</a>
           </div>
@@ -216,8 +229,8 @@ export default function BelicsMasterApp() {
               <a href="#agendar" className="bg-amber-400 text-neutral-950 px-8 py-4 rounded-2xl font-black text-sm hover:bg-amber-300 transition-all duration-300 flex items-center gap-3 transform hover:-translate-y-1 shadow-[0_10px_30px_rgba(251,191,36,0.3)] tracking-wider group">
                 Apartar mi Silla <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </a>
-              <a href="#cortes" className="bg-neutral-900/80 border border-neutral-800 text-white px-8 py-4 rounded-2xl font-bold text-sm hover:bg-neutral-800 transition-all backdrop-blur-md">
-                Ver Estilos
+              <a href="#servicios" className="bg-neutral-900/80 border border-neutral-800 text-white px-8 py-4 rounded-2xl font-bold text-sm hover:bg-neutral-800 transition-all backdrop-blur-md">
+                Ver Servicios
               </a>
             </div>
           </div>
@@ -263,29 +276,25 @@ export default function BelicsMasterApp() {
         </div>
       </section>
 
-      {/* SERVICIOS */}
+      {/* NUEVOS SERVICIOS Y PRECIOS */}
       <section id="servicios" className="py-24 bg-neutral-900/20 border-t border-neutral-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <span className="text-xs font-black tracking-widest text-amber-400 uppercase mb-3 block">Excelencia</span>
-            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tight">Servicios <span className="text-amber-400">Principales</span></h2>
+            <span className="text-xs font-black tracking-widest text-amber-400 uppercase mb-3 block">Tarifas Oficiales</span>
+            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tight">Nuestros <span className="text-amber-400">Servicios</span></h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { icon: Clock, title: 'Corte Ejecutivo & Moderno', price: '$350 MXN', desc: 'Incluye lavado, corte personalizado con tijera o máquina y producto de acabado.' },
-              { icon: Award, title: 'Arreglo de Barba', price: '$250 MXN', desc: 'Perfilado con navaja, vapor, toallas calientes y aceites hidratantes.' },
-              { icon: ShieldCheck, title: 'Paquete Completo', price: '$550 MXN', desc: 'La experiencia integral para mantener cabello y barba impecables.' }
-            ].map((item, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {servicesList.map((item, i) => (
               <div key={i} className="bg-neutral-900/40 border border-neutral-800/80 p-8 rounded-3xl hover:border-amber-400/50 transition-all shadow-xl flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-6">
                     <div className="w-14 h-14 bg-neutral-950 rounded-2xl flex items-center justify-center border border-neutral-800">
-                      <item.icon className="text-amber-400" size={26} />
+                      <Scissors className="text-amber-400" size={26} />
                     </div>
                     <span className="text-xs font-black px-3 py-1 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20">{item.price}</span>
                   </div>
                   <h3 className="text-xl font-bold mb-3">{item.title}</h3>
-                  <p className="text-neutral-400 text-sm leading-relaxed">{item.desc}</p>
+                  <p className="text-neutral-400 text-xs leading-relaxed">{item.desc}</p>
                 </div>
               </div>
             ))}
@@ -327,7 +336,7 @@ export default function BelicsMasterApp() {
         </div>
       </section>
 
-      {/* RESERVAS CON BLOQUEO AUTOMÁTICO Y HORARIOS DE 40 MINUTOS */}
+      {/* RESERVAS CON SELECTOR DE LOS NUEVOS SERVICIOS, 40 MIN Y BLOQUEOS DE BARBEROS */}
       <section id="agendar" className="py-24 bg-neutral-900/10 border-t border-neutral-900 relative">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -375,15 +384,17 @@ export default function BelicsMasterApp() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase mb-2 tracking-wider">¿Qué corte o servicio deseas?</label>
-                <input 
-                  type="text" 
+                <label className="block text-xs font-bold text-neutral-400 uppercase mb-2 tracking-wider">Selecciona tu Servicio</label>
+                <select 
                   value={clientService}
                   onChange={(e) => setClientService(e.target.value)}
-                  placeholder="Ej. Corte clásico, desvanecido medio, barba..."
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-amber-400 transition-colors text-sm"
-                  required
-                />
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-amber-400 transition-colors text-sm cursor-pointer"
+                >
+                  <option value="Corte (160 pesos)">Corte — 160 pesos</option>
+                  <option value="Corte y barba (260 pesos)">Corte y barba — 260 pesos</option>
+                  <option value="Corte barba y tinte (280 pesos)">Corte barba y tinte — 280 pesos</option>
+                  <option value="Cejas (20 pesos)">Cejas — 20 pesos</option>
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-neutral-400 uppercase mb-2 tracking-wider flex items-center gap-1.5">
