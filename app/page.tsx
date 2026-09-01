@@ -7,7 +7,7 @@ import { MapPin, Phone, Calendar, Clock, Scissors, Star, ShieldCheck, Trash2, Lo
 export default function BelicsMasterApp() {
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Formulario del cliente (por defecto el primer servicio de la lista nueva)
+  // Formulario del cliente (por defecto el primer servicio de la lista)
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientService, setClientService] = useState('Corte (160 pesos)');
@@ -27,12 +27,13 @@ export default function BelicsMasterApp() {
     { name: 'Gustavo', role: 'Gordito / Barber' }
   ];
 
-  // Nuevos servicios oficiales con sus precios reales
+  // Servicios oficiales actualizados con los nuevos precios
   const servicesList = [
     { title: 'Corte', price: '160 pesos', desc: 'Corte de cabello profesional adaptado a tu estilo.' },
+    { title: 'Corte de niño', price: '120 pesos', desc: 'Corte especial y paciente para los pequeños del hogar.' },
     { title: 'Corte y barba', price: '260 pesos', desc: 'Corte completo y perfilado de barba con acabado impecable.' },
     { title: 'Corte barba y tinte', price: '280 pesos', desc: 'Servicio integral de corte, barba y aplicación de tinte.' },
-    { title: 'Cejas', price: '20 pesos', desc: 'Diseño y perfilado rápido de cejas.' }
+    { title: 'Cejas', price: '30 pesos', desc: 'Diseño y perfilado rápido de cejas.' }
   ];
 
   // Generar horarios estrictamente de 40 en 40 minutos (De 11:00 AM a 8:00 PM, Domingos de 11:00 AM a 4:00 PM)
@@ -120,11 +121,12 @@ export default function BelicsMasterApp() {
       return;
     }
 
-    // Calcular precio numérico para la base de datos
+    // Calcular precio numérico para la base de datos de manera exacta
     let numericPrice = 160;
+    if (clientService.includes('120')) numericPrice = 120;
     if (clientService.includes('260')) numericPrice = 260;
     if (clientService.includes('280')) numericPrice = 280;
-    if (clientService.includes('20')) numericPrice = 20;
+    if (clientService.includes('30')) numericPrice = 30;
 
     try {
       const response = await fetch('/api/citas', {
@@ -276,14 +278,14 @@ export default function BelicsMasterApp() {
         </div>
       </section>
 
-      {/* NUEVOS SERVICIOS Y PRECIOS */}
+      {/* SECCIÓN DE SERVICIOS Y TARIFAS */}
       <section id="servicios" className="py-24 bg-neutral-900/20 border-t border-neutral-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <span className="text-xs font-black tracking-widest text-amber-400 uppercase mb-3 block">Tarifas Oficiales</span>
             <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tight">Nuestros <span className="text-amber-400">Servicios</span></h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {servicesList.map((item, i) => (
               <div key={i} className="bg-neutral-900/40 border border-neutral-800/80 p-8 rounded-3xl hover:border-amber-400/50 transition-all shadow-xl flex flex-col justify-between">
                 <div>
@@ -336,7 +338,7 @@ export default function BelicsMasterApp() {
         </div>
       </section>
 
-      {/* RESERVAS CON SELECTOR DE LOS NUEVOS SERVICIOS, 40 MIN Y BLOQUEOS DE BARBEROS */}
+      {/* RESERVAS CON SELECTOR DE NUEVOS SERVICIOS, 40 MIN Y BLOQUEO DE BARBEROS */}
       <section id="agendar" className="py-24 bg-neutral-900/10 border-t border-neutral-900 relative">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -391,9 +393,10 @@ export default function BelicsMasterApp() {
                   className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-amber-400 transition-colors text-sm cursor-pointer"
                 >
                   <option value="Corte (160 pesos)">Corte — 160 pesos</option>
+                  <option value="Corte de niño (120 pesos)">Corte de niño — 120 pesos</option>
                   <option value="Corte y barba (260 pesos)">Corte y barba — 260 pesos</option>
                   <option value="Corte barba y tinte (280 pesos)">Corte barba y tinte — 280 pesos</option>
-                  <option value="Cejas (20 pesos)">Cejas — 20 pesos</option>
+                  <option value="Cejas (30 pesos)">Cejas — 30 pesos</option>
                 </select>
               </div>
               <div>
