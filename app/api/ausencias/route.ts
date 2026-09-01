@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Configurar cliente de Supabase con tus variables de entorno
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Evitar que falle en el build si las variables no están inyectadas todavía
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export async function GET() {
   try {
+    if (!supabase) return NextResponse.json({});
+
     const { data, error } = await supabase
       .from('configuraciones')
       .select('valor')
@@ -29,14 +32,16 @@ export async function POST(request: Request) {
     const body = await request.json();
     const valorJson = JSON.stringify(body);
 
-    // Guardar o actualizar en la tabla 'configuraciones' de Supabase
+    if (!supabase) {
+      return NextResponse.json({ success: false, message: 'Supabase no configurado' }, { status: 500 });
+    }
+
     const { error } = await supabase
       .from('configuraciones')
       .upsert({ clave: 'ausencias', valor: valorJson }, { onConflict: 'clave' });
 
     if (error) {
-      // Si la tabla no existe aún, guardamos temporalmente en memoria/respuesta pero avisamos
-      return NextResponse.json({ success: true, warning: 'Tabla configuraciones pendiente en Supabase' });
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
