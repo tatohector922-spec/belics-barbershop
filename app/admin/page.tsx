@@ -333,10 +333,32 @@ export default function AdminDashboardPage() {
                     </div>
                     <p className="text-xs text-neutral-400">📅 Fecha: {appt.date} · ⏰ Hora: {appt.time} · 📞 Tel: {appt.phone}</p>
                   </div>
-                  <div className="flex items-center gap-2.5 shrink-0">
-                    {appt.status !== 'confirmada' && <button onClick={() => updateStatus(appt.id, 'confirmada')} className="bg-green-500/10 border border-green-500/30 text-green-400 px-4 py-2.5 rounded-xl text-xs font-bold">Confirmar</button>}
-                    {appt.status !== 'cancelada' && <button onClick={() => updateStatus(appt.id, 'cancelada')} className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-2.5 rounded-xl text-xs font-bold">Cancelar</button>}
-                    <button onClick={() => deleteAppointment(appt.id)} className="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-red-400 p-3 rounded-xl"><Trash2 size={18} /></button>
+                  
+                  <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+                    {appt.status !== 'confirmada' && (
+                      <button onClick={() => updateStatus(appt.id, 'confirmada')} className="bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-neutral-950 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors">
+                        <CheckCircle2 size={16} /> Confirmar
+                      </button>
+                    )}
+
+                    {appt.status !== 'cancelada' && (
+                      <button 
+                        onClick={async () => {
+                          await updateStatus(appt.id, 'cancelada');
+                          const cleanPhone = appt.phone.replace(/\D/g, '');
+                          const whatsappNumber = cleanPhone.startsWith('52') ? cleanPhone : `521${cleanPhone}`;
+                          const message = `Hola ${appt.client}, te saludamos de Belics Barbershop. Lamentablemente tu cita para ${appt.service} el día ${appt.date} a las ${appt.time} ha sido cancelada en el sistema. ¿Te gustaría reagendar?`;
+                          window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                        }} 
+                        className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      >
+                        <XCircle size={16} /> Cancelar y Avisar WhatsApp
+                      </button>
+                    )}
+
+                    <button onClick={() => deleteAppointment(appt.id)} className="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-red-400 p-3 rounded-xl transition-colors">
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 </div>
               ))
