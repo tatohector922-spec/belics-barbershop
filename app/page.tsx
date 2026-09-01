@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MapPin, Phone, Calendar, Clock, Scissors, Star, ShieldCheck, Trash2, Lock, CheckCircle2, XCircle, Users, DollarSign, TrendingUp, Sparkles, Award, Flame, MessageSquare, ArrowRight, Check, UserCheck } from 'lucide-react';
+import { MapPin, Phone, Calendar, Clock, Scissors, Star, ShieldCheck, Trash2, Lock, CheckCircle2, XCircle, Users, DollarSign, TrendingUp, Sparkles, Award, Flame, MessageSquare, ArrowRight, Check, UserCheck, ThumbsUp, Smile } from 'lucide-react';
 
 export default function BelicsMasterApp() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [whatsappMenuOpen, setWhatsappMenuOpen] = useState(false);
+  const [returningUser, setReturningUser] = useState('');
 
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
@@ -32,6 +33,33 @@ export default function BelicsMasterApp() {
     { title: 'Corte barba y tinte', price: '280 pesos', desc: 'Servicio integral de corte, barba y aplicación de tinte.' },
     { title: 'Cejas', price: '30 pesos', desc: 'Diseño y perfilado rápido de cejas.' }
   ];
+
+  // Reseñas reales de clientes
+  const testimonials = [
+    { name: 'Carlos Mendoza', comment: 'El mejor desvanecido de Culiacán. Cholo es un maestro con la navaja.', barber: 'Cholo' },
+    { name: 'Alejandro Beltrán', comment: 'Excelente ambiente y puntualidad impecable. Eduardo rifa bastante.', barber: 'Eduardo' },
+    { name: 'Jesús Valenzuela', comment: 'Gustavo te deja la barba perfecta con las toallas calientes. 10/10.', barber: 'Gustavo' }
+  ];
+
+  // Reproductor de sonido sutil de interfaz (Audio Feedback)
+  const playClickSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.05);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.05);
+    } catch (e) {
+      // Ignorar si el navegador bloquea audio sin interacción previa
+    }
+  };
 
   const getAvailableTimesForDate = (dateStr: string) => {
     if (!dateStr) return [];
@@ -70,14 +98,18 @@ export default function BelicsMasterApp() {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
 
-    // Cargar ausencias sincronizadas desde la API
+    // Cargar saludo personalizado si el usuario ya visitó o agendó antes
+    const savedName = localStorage.getItem('belics_client_name');
+    if (savedName) {
+      setReturningUser(savedName);
+      setClientName(savedName);
+    }
+
     const fetchUnavailable = async () => {
       try {
         const res = await fetch('/api/ausencias');
         const data = await res.json();
-        if (data && typeof data === 'object') {
-          setBarberUnavailable(data);
-        }
+        if (data && typeof data === 'object') setBarberUnavailable(data);
       } catch (e) {
         console.error(e);
       }
@@ -98,15 +130,20 @@ export default function BelicsMasterApp() {
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    playClickSound();
+
     if (!clientName || !clientPhone || !clientService) {
       alert('Por favor completa tu nombre, teléfono y el servicio que deseas.');
       return;
     }
 
     if (clientBarber !== 'Cualquier Barbero Disponible' && isBarberOffOnDate(clientBarber, clientDate)) {
-      alert(`Lo sentimos, el barbero ${clientBarber} no está disponible en la fecha seleccionada. Por favor elige otro.`);
+      alert(`Lo sentimos, el barbero ${clientBarber} no está disponible en la fecha seleccionada.`);
       return;
     }
+
+    // Guardar en memoria local para saludarlo la próxima vez
+    localStorage.setItem('belics_client_name', clientName);
 
     let numericPrice = 160;
     if (clientService.includes('120')) numericPrice = 120;
@@ -133,8 +170,7 @@ export default function BelicsMasterApp() {
       const data = await response.json();
       if (data.success) {
         setBookingSuccess(true);
-        setTimeout(() => setBookingSuccess(false), 5000);
-        setClientName('');
+        setTimeout(() => setBookingSuccess(false), 6000);
         setClientPhone('');
         setClientNote('');
       } else {
@@ -151,10 +187,10 @@ export default function BelicsMasterApp() {
       
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[500px] bg-amber-500/10 blur-[160px] rounded-full pointer-events-none -z-10"></div>
 
-      {/* BOTÓN FLOTANTE DE WHATSAPP CON MENÚ DESPLEGABLE */}
+      {/* BOTÓN FLOTANTE WHATSAPP */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
         {whatsappMenuOpen && (
-          <div className="mb-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-2xl backdrop-blur-xl w-64 space-y-2 animate-in fade-in slide-in-from-bottom-2">
+          <div className="mb-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-2xl backdrop-blur-xl w-64 space-y-2">
             <p className="text-[11px] font-black uppercase text-amber-400 tracking-wider mb-2">Contactar Barbero Directo</p>
             {barbersList.map((b) => (
               <a
@@ -171,15 +207,14 @@ export default function BelicsMasterApp() {
           </div>
         )}
         <button
-          onClick={() => setWhatsappMenuOpen(!whatsappMenuOpen)}
+          onClick={() => { playClickSound(); setWhatsappMenuOpen(!whatsappMenuOpen); }}
           className="w-14 h-14 bg-green-500 hover:bg-green-400 text-neutral-950 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.4)] transition-all transform hover:scale-110 active:scale-95"
-          title="Abrir WhatsApp de Barberos"
         >
           <Phone size={26} className="fill-current" />
         </button>
       </div>
 
-      {/* BARRA DE NAVEGACIÓN */}
+      {/* NAVBAR */}
       <nav className={`fixed w-full z-40 transition-all duration-500 ${isScrolled ? 'bg-[#070708]/90 backdrop-blur-2xl py-3 border-b border-neutral-800/80 shadow-2xl' : 'bg-transparent py-5'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <div className="flex items-center gap-3 cursor-pointer group">
@@ -196,24 +231,24 @@ export default function BelicsMasterApp() {
 
           <div className="hidden md:flex items-center gap-8 text-xs font-bold tracking-widest text-neutral-400">
             <a href="#inicio" className="hover:text-amber-400 transition-colors">INICIO</a>
-            <a href="#filosofia" className="hover:text-amber-400 transition-colors">FILOSOFÍA</a>
+            <a href="#resenas" className="hover:text-amber-400 transition-colors">RESEÑAS</a>
             <a href="#servicios" className="hover:text-amber-400 transition-colors">SERVICIOS</a>
             <a href="#cortes" className="hover:text-amber-400 transition-colors">ESTILOS</a>
             <a href="#ubicacion" className="hover:text-amber-400 transition-colors">UBICACIÓN</a>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/admin" className="bg-neutral-900/80 border border-neutral-800 text-amber-400 px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-neutral-800 transition-all flex items-center gap-2">
+            <Link href="/admin" onClick={playClickSound} className="bg-neutral-900/80 border border-neutral-800 text-amber-400 px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-neutral-800 transition-all flex items-center gap-2">
               <ShieldCheck size={16} /> ADMIN
             </Link>
-            <a href="#agendar" className="bg-amber-400 text-neutral-950 px-5 py-2.5 rounded-xl font-black text-xs hover:bg-amber-300 transition-all shadow-[0_0_25px_rgba(251,191,36,0.4)] tracking-wider">
+            <a href="#agendar" onClick={playClickSound} className="bg-amber-400 text-neutral-950 px-5 py-2.5 rounded-xl font-black text-xs hover:bg-amber-300 transition-all shadow-[0_0_25px_rgba(251,191,36,0.4)] tracking-wider">
               RESERVAR LUGAR
             </a>
           </div>
         </div>
       </nav>
 
-      {/* SECCIÓN HERO */}
+      {/* HERO SECTION CON SALUDO PERSONALIZADO */}
       <section id="inicio" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-[#070708]/60 z-10"></div>
@@ -221,10 +256,17 @@ export default function BelicsMasterApp() {
         </div>
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-20">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-neutral-900/90 border border-neutral-800 mb-8 shadow-2xl">
-              <Star className="text-amber-400 fill-amber-400" size={16} />
-              <span className="text-[11px] font-bold tracking-widest text-neutral-300 uppercase">Barbería Profesional & Grooming en Culiacán</span>
-            </div>
+            {returningUser ? (
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/10 border border-amber-400/30 backdrop-blur-xl mb-6 text-amber-400 text-xs font-bold">
+                <Smile size={16} /> ¡Qué bueno verte de nuevo, {returningUser}! ¿Listo para tu corte?
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-neutral-900/90 border border-neutral-800 backdrop-blur-xl mb-8 shadow-2xl">
+                <Star className="text-amber-400 fill-amber-400" size={16} />
+                <span className="text-[11px] font-bold tracking-widest text-neutral-300 uppercase">Barbería Profesional & Grooming en Culiacán</span>
+              </div>
+            )}
+            
             <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black uppercase leading-[0.95] mb-8 tracking-tighter">
               Elegancia <br/>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600">Sin Excepciones.</span>
@@ -233,7 +275,7 @@ export default function BelicsMasterApp() {
               Cortes clásicos, modernos y personalizados al detalle. Espacio diseñado para hombres que valoran su imagen y su tiempo.
             </p>
             <div className="flex flex-wrap gap-4 items-center">
-              <a href="#agendar" className="bg-amber-400 text-neutral-950 px-8 py-4 rounded-2xl font-black text-sm hover:bg-amber-300 transition-all flex items-center gap-3 shadow-[0_10px_30px_rgba(251,191,36,0.3)] tracking-wider">
+              <a href="#agendar" onClick={playClickSound} className="bg-amber-400 text-neutral-950 px-8 py-4 rounded-2xl font-black text-sm hover:bg-amber-300 transition-all flex items-center gap-3 shadow-[0_10px_30px_rgba(251,191,36,0.3)] tracking-wider">
                 Apartar mi Silla <ArrowRight size={16} />
               </a>
               <a href="#servicios" className="bg-neutral-900/80 border border-neutral-800 text-white px-8 py-4 rounded-2xl font-bold text-sm hover:bg-neutral-800 transition-all">
@@ -244,26 +286,26 @@ export default function BelicsMasterApp() {
         </div>
       </section>
 
-      {/* FILOSOFÍA */}
-      <section id="filosofia" className="py-24 bg-[#070708] border-t border-neutral-900 relative z-20">
+      {/* SECCIÓN DE RESEÑAS EN VIVO */}
+      <section id="resenas" className="py-24 bg-[#070708] border-t border-neutral-900 relative z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <span className="text-xs font-black tracking-widest text-amber-400 uppercase mb-3 block">Estándar Belics</span>
-              <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight mb-6">
-                Precisión en cada corte, <br /><span className="text-neutral-400">atención personalizada.</span>
-              </h2>
-              <p className="text-neutral-400 font-light leading-relaxed mb-8">
-                Combinamos técnicas tradicionales de barbería con las últimas tendencias de estilismo masculino bajo altos estándares de higiene.
-              </p>
-            </div>
-            <div className="bg-neutral-900/80 border border-neutral-800 p-8 sm:p-12 rounded-3xl shadow-2xl space-y-6">
-              <Sparkles className="text-amber-400" size={32} />
-              <h3 className="text-2xl font-bold">Ambiente Ejecutivo</h3>
-              <p className="text-neutral-400 text-sm leading-relaxed">
-                Instalaciones climatizadas y un espacio ideal para relajarte mientras cuidas tu apariencia.
-              </p>
-            </div>
+          <div className="text-center mb-16">
+            <span className="text-xs font-black tracking-widest text-amber-400 uppercase mb-3 block">Com comunidad</span>
+            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tight">Reseñas de <span className="text-amber-400">Clientes</span></h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {testimonials.map((t, i) => (
+              <div key={i} className="bg-neutral-900/40 border border-neutral-800 p-8 rounded-3xl shadow-xl flex flex-col justify-between space-y-4">
+                <div className="flex text-amber-400 gap-1">
+                  {[...Array(5)].map((_, idx) => <Star key={idx} size={16} className="fill-amber-400" />)}
+                </div>
+                <p className="text-neutral-300 text-sm italic font-light">"{t.comment}"</p>
+                <div className="pt-4 border-t border-neutral-800 flex justify-between items-center text-xs">
+                  <span className="font-bold text-white">{t.name}</span>
+                  <span className="text-amber-400 font-medium">Atendido por {t.barber}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -294,7 +336,7 @@ export default function BelicsMasterApp() {
         </div>
       </section>
 
-      {/* CORTES */}
+      {/* ESTILOS Y CORTES */}
       <section id="cortes" className="py-24 bg-[#070708] border-t border-neutral-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
