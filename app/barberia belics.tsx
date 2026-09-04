@@ -22,7 +22,7 @@ export default function BelicsMasterApp() {
   const [reviewsList, setReviewsList] = useState([
     { name: 'Carlos Mendoza', barber: 'Cholo', rating: 5, comment: 'El mejor desvanecido de Culiacán. Cholo es un maestro con la navaja.' },
     { name: 'Alejandro Beltrán', barber: 'Eduardo', rating: 5, comment: 'Excelente ambiente y puntualidad impecable. Eduardo rifa bastante.' },
-    { name: 'Jesús Valenzuela', barber: 'Gordito', rating: 5, comment: 'Gustavo te deja la barba perfecta con las toallas calientes. 10/10.' }
+    { name: 'Jesús Valenzuela', barber: 'Gustavo', rating: 5, comment: 'Gustavo te deja la barba perfecta con las toallas calientes. 10/10.' }
   ]);
   const [newReviewName, setNewReviewName] = useState('');
   const [newReviewBarber, setNewReviewBarber] = useState('Cholo');
@@ -34,7 +34,7 @@ export default function BelicsMasterApp() {
 
   const barbersList = [
     { name: 'Cholo', role: 'Master Barber', phone: '6673602477', rating: 4.9, reviewsCount: 128 },
-    { name: 'Eduardo', role: 'Master Barber', phone: '6675757736', rating: 4.8, reviewsCount: 94 },
+    { name: 'Eduardo', role: 'Senior Barber', phone: '6675757736', rating: 4.8, reviewsCount: 94 },
     { name: 'Gustavo', role: 'Gordito / Barber', phone: '6674535329', rating: 4.9, reviewsCount: 112 }
   ];
 
@@ -378,7 +378,7 @@ export default function BelicsMasterApp() {
                   <select value={newReviewBarber} onChange={e => setNewReviewBarber(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm cursor-pointer">
                     <option value="Cholo">Cholo</option>
                     <option value="Eduardo">Eduardo</option>
-                    <option value="Gustavo">Gordito</option>
+                    <option value="Gustavo">Gustavo</option>
                   </select>
                 </div>
               </div>

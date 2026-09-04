@@ -29,7 +29,7 @@ export default function AdminDashboardPage() {
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
   const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
 
-  const barbersList = ['Cholo', 'Eduardo', 'Gustavo'];
+  const barbersList = ['Cholo', 'Eduardo', 'Gordito'];
 
   useEffect(() => {
     if (localStorage.getItem('auth') === 'true') setIsAuthenticated(true);
