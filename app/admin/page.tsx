@@ -29,7 +29,8 @@ export default function AdminDashboardPage() {
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
   const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
 
-  const barbersList = ['Cholo', 'Eduardo', 'Gordito'];
+  // Nombres unificados oficiales de los barberos
+  const barbersList = ['Cholo', 'Eduardo', 'Gordito Belics'];
 
   useEffect(() => {
     if (localStorage.getItem('auth') === 'true') setIsAuthenticated(true);
@@ -96,18 +97,25 @@ export default function AdminDashboardPage() {
       const res = await fetch('/api/citas');
       const data = await res.json();
       if (Array.isArray(data)) {
-        const formatted = data.map((item: any, index: number) => ({
-          id: item.id || index.toString(),
-          client: item.clientname || item.clientName || item.client || item.nombre || 'Cliente',
-          service: item.service || item.corte || 'Corte',
-          barber: item.barbername || item.barberName || item.barber || item.barbero || 'Cholo',
-          time: item.appointmenttime || item.appointmentTime || item.time || item.hora || '11:00 AM',
-          phone: item.clientphone || item.clientPhone || item.phone || item.telefono || 'S/N',
-          date: item.appointmentdate || item.appointmentDate || item.date || item.fecha || new Date().toISOString().split('T')[0],
-          note: item.note || item.nota || 'Sin notas adicionales.',
-          status: item.status || 'pendiente',
-          price: Number(item.price || item.precio || 160)
-        }));
+        const formatted = data.map((item: any, index: number) => {
+          let rawBarber = item.barbername || item.barberName || item.barber || item.barbero || 'Cholo';
+          if (rawBarber === 'Gustavo' || rawBarber === 'Gordito') {
+            rawBarber = 'Gordito Belics';
+          }
+
+          return {
+            id: item.id || index.toString(),
+            client: item.clientname || item.clientName || item.client || item.nombre || 'Cliente',
+            service: item.service || item.corte || 'Corte',
+            barber: rawBarber,
+            time: item.appointmenttime || item.appointmentTime || item.time || item.hora || '11:00 AM',
+            phone: item.clientphone || item.clientPhone || item.phone || item.telefono || 'S/N',
+            date: item.appointmentdate || item.appointmentDate || item.date || item.fecha || new Date().toISOString().split('T')[0],
+            note: item.note || item.nota || 'Sin notas adicionales.',
+            status: item.status || 'pendiente',
+            price: Number(item.price || item.precio || 160)
+          };
+        });
         setAppointments(formatted);
       }
     } catch (err) {
@@ -336,8 +344,17 @@ export default function AdminDashboardPage() {
                   
                   <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
                     {appt.status !== 'confirmada' && (
-                      <button onClick={() => updateStatus(appt.id, 'confirmada')} className="bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-neutral-950 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors">
-                        <CheckCircle2 size={16} /> Confirmar
+                      <button 
+                        onClick={async () => {
+                          await updateStatus(appt.id, 'confirmada');
+                          const cleanPhone = appt.phone.replace(/\D/g, '');
+                          const whatsappNumber = cleanPhone.startsWith('52') ? cleanPhone : `521${cleanPhone}`;
+                          const message = `¡Hola ${appt.client}! Te saludamos de Belics Barbershop ✂️. Tu cita para ${appt.service} el día ${appt.date} a las ${appt.time} con ${appt.barber} ha sido *confirmada* con éxito. ¡Te esperamos!`;
+                          window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                        }} 
+                        className="bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-neutral-950 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      >
+                        <CheckCircle2 size={16} /> Confirmar y Avisar WhatsApp
                       </button>
                     )}
 

@@ -22,7 +22,7 @@ export default function BelicsMasterApp() {
   const [reviewsList, setReviewsList] = useState([
     { name: 'Carlos Mendoza', barber: 'Cholo', rating: 5, comment: 'El mejor desvanecido de Culiacán. Cholo es un maestro con la navaja.' },
     { name: 'Alejandro Beltrán', barber: 'Eduardo', rating: 5, comment: 'Excelente ambiente y puntualidad impecable. Eduardo rifa bastante.' },
-    { name: 'Jesús Valenzuela', barber: 'Gordito', rating: 5, comment: 'Gustavo te deja la barba perfecta con las toallas calientes. 10/10.' }
+    { name: 'Jesús Valenzuela', barber: 'Gordito Belics', rating: 5, comment: 'Gordito te deja la barba perfecta con las toallas calientes. 10/10.' }
   ]);
   const [newReviewName, setNewReviewName] = useState('');
   const [newReviewBarber, setNewReviewBarber] = useState('Cholo');
@@ -32,10 +32,11 @@ export default function BelicsMasterApp() {
 
   const [barberUnavailable, setBarberUnavailable] = useState<{ [key: string]: boolean }>({});
 
+  // Nombre unificado de los barberos (Gordito Belics oficial)
   const barbersList = [
     { name: 'Cholo', role: 'Master Barber', phone: '6673602477', rating: 4.9, reviewsCount: 128 },
-    { name: 'Eduardo', role: 'Master Barber', phone: '6675757736', rating: 4.8, reviewsCount: 94 },
-    { name: 'Gustavo', role: 'Gordito / Barber', phone: '6674535329', rating: 4.9, reviewsCount: 112 }
+    { name: 'Eduardo', role: 'Senior Barber', phone: '6675757736', rating: 4.8, reviewsCount: 94 },
+    { name: 'Gordito Belics', role: 'Gordito / Barber', phone: '6674535329', rating: 4.9, reviewsCount: 112 }
   ];
 
   const servicesList = [
@@ -107,7 +108,6 @@ export default function BelicsMasterApp() {
       setNewReviewName(savedName);
     }
 
-    // Cargar reseñas guardadas localmente o del servidor
     const savedReviews = localStorage.getItem('belics_reviews');
     if (savedReviews) {
       try { setReviewsList(JSON.parse(savedReviews)); } catch (e) {}
@@ -320,7 +320,6 @@ export default function BelicsMasterApp() {
             <p className="text-neutral-400 text-sm mt-3 font-light">Conoce la calificación de cada maestro y lo que opinan nuestros clientes.</p>
           </div>
 
-          {/* TARJETAS DE LOS BARBEROS Y SUS ESTRELLAS */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
             {barbersList.map((barber, i) => (
               <div key={i} className="bg-neutral-900/60 border border-neutral-800 p-8 rounded-3xl shadow-xl flex flex-col justify-between space-y-6 backdrop-blur-md">
@@ -351,14 +350,12 @@ export default function BelicsMasterApp() {
             ))}
           </div>
 
-          {/* APARTADO PARA ESCRIBIR UNA NUEVA RESEÑA */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start bg-neutral-900/40 border border-neutral-800 p-8 sm:p-12 rounded-3xl backdrop-blur-xl">
-            
             <div className="lg:col-span-1 space-y-4">
               <span className="text-xs font-black tracking-widest text-amber-400 uppercase block">Tu Opinión Cuenta</span>
               <h3 className="text-3xl font-black uppercase tracking-tight">Déjanos tu <span className="text-amber-400">Reseña</span></h3>
               <p className="text-neutral-400 text-sm font-light leading-relaxed">
-                ¿Te cortaste con nosotros recientemente? Comparte tu experiencia con Cholo, Eduardo o Gustavo para ayudar a más clientes.
+                ¿Te cortaste con nosotros recientemente? Comparte tu experiencia con Cholo, Eduardo o Gordito Belics.
               </p>
               {reviewSuccess && (
                 <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-bold flex items-center gap-2">
@@ -378,7 +375,7 @@ export default function BelicsMasterApp() {
                   <select value={newReviewBarber} onChange={e => setNewReviewBarber(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white text-sm cursor-pointer">
                     <option value="Cholo">Cholo</option>
                     <option value="Eduardo">Eduardo</option>
-                    <option value="Gustavo">Gordito</option>
+                    <option value="Gordito Belics">Gordito Belics</option>
                   </select>
                 </div>
               </div>
@@ -401,10 +398,8 @@ export default function BelicsMasterApp() {
                 <Send size={14} /> Publicar Reseña
               </button>
             </form>
-
           </div>
 
-          {/* LISTADO DE RESEÑAS RECIENTES */}
           <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
             {reviewsList.map((r, i) => (
               <div key={i} className="bg-neutral-900/40 border border-neutral-800 p-6 rounded-2xl shadow-lg flex flex-col justify-between space-y-3">
