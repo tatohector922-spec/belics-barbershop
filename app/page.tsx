@@ -32,7 +32,6 @@ export default function BelicsMasterApp() {
 
   const [barberUnavailable, setBarberUnavailable] = useState<{ [key: string]: boolean }>({});
 
-  // Nombre unificado de los barberos (Gordito Belics oficial)
   const barbersList = [
     { name: 'Cholo', role: 'Master Barber', phone: '6673602477', rating: 4.9, reviewsCount: 128 },
     { name: 'Eduardo', role: 'Senior Barber', phone: '6675757736', rating: 4.8, reviewsCount: 94 },
@@ -143,12 +142,28 @@ export default function BelicsMasterApp() {
       return;
     }
 
+    // 1. VALIDACIÓN ESTRICTA: Teléfono móvil a 10 dígitos reales
+    const cleanPhone = clientPhone.replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      alert('⚠️ Por favor ingresa un número de teléfono válido de 10 dígitos.');
+      return;
+    }
+
+    // 2. CONTROL ANTI-SPAM POR TIEMPO (Evita envíos masivos en menos de 3 minutos)
+    const lastBookingTime = localStorage.getItem('belics_last_booking_time');
+    const now = Date.now();
+    if (lastBookingTime && now - Number(lastBookingTime) < 180000) {
+      alert('⚠️ Has enviado una solicitud recientemente. Por favor espera unos minutos antes de solicitar otra cita.');
+      return;
+    }
+
     if (clientBarber !== 'Cualquier Barbero Disponible' && isBarberOffOnDate(clientBarber, clientDate)) {
       alert(`Lo sentimos, el barbero ${clientBarber} no está disponible en la fecha seleccionada.`);
       return;
     }
 
     localStorage.setItem('belics_client_name', clientName);
+    localStorage.setItem('belics_last_booking_time', now.toString());
 
     let numericPrice = 160;
     if (clientService.includes('120')) numericPrice = 120;
@@ -162,7 +177,7 @@ export default function BelicsMasterApp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientName,
-          clientPhone,
+          clientPhone: cleanPhone,
           service: clientService,
           barberName: clientBarber,
           appointmentDate: clientDate,
@@ -475,7 +490,7 @@ export default function BelicsMasterApp() {
       <section id="agendar" className="py-24 bg-neutral-900/10 border-t border-neutral-900 relative">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <span className="text-xs font-black tracking-widest text-amber-400 uppercase mb-3 block">Sistema de Citas</span>
+            <span className="text-xs font-black tracking-widest text-amber-400 uppercase mb-3 block">Sistema Protegido Anti-Spam</span>
             <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight mb-3">
               Aparta tu <span className="text-amber-400">Lugar</span>
             </h2>
@@ -498,8 +513,8 @@ export default function BelicsMasterApp() {
                 <input type="text" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Ej. Alejandro Beltrán" className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-amber-400" required />
               </div>
               <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase mb-2">Teléfono / WhatsApp</label>
-                <input type="text" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="667 000 0000" className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-amber-400" required />
+                <label className="block text-xs font-bold text-neutral-400 uppercase mb-2">Teléfono / WhatsApp (10 Dígitos)</label>
+                <input type="text" maxLength={10} value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="6670000000" className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-amber-400" required />
               </div>
             </div>
 
