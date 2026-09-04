@@ -7,9 +7,10 @@ import Link from 'next/link';
 export default function AdminDashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authCodeInput, setAuthCodeInput] = useState('');
-  const [adminTab, setAdminTab] = useState<'today' | 'week' | 'month' | 'year' | 'pending' | 'cancelled' | 'barbers'>('pending');
+  
+  // Por defecto arrancamos directo en la vista de barberos para no confundir
   const [selectedBarberFilter, setSelectedBarberFilter] = useState<string>('Cholo');
-  const [barberSubTab, setBarberSubTab] = useState<'today' | 'week' | 'month' | 'year' | 'pending' | 'cancelled'>('today');
+  const [barberSubTab, setBarberSubTab] = useState<'today' | 'pending' | 'week' | 'month' | 'year' | 'cancelled'>('today');
   
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -195,29 +196,12 @@ export default function AdminDashboardPage() {
   const todayConfirmedAppointments = appointments.filter(a => a.date === todayStr && a.status === 'confirmada');
   const totalRevenueToday = todayConfirmedAppointments.reduce((acc, curr) => acc + curr.price, 0);
 
-  // Lógica de filtrado general
-  const filteredAppointments = appointments.filter(appt => {
-    if (adminTab === 'pending') return appt.status === 'pendiente';
-    if (adminTab === 'cancelled') return appt.status === 'cancelada';
-    if (adminTab === 'today') return appt.date === todayStr && appt.status === 'confirmada'; // Solo confirmadas de hoy
-    if (adminTab === 'week') {
-      const apptDate = new Date(appt.date);
-      const now = new Date();
-      const diffTime = Math.abs(Number(apptDate) - Number(now));
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays <= 7 && appt.status === 'confirmada';
-    }
-    if (adminTab === 'month') return appt.date.startsWith(todayStr.slice(0, 7)) && appt.status === 'confirmada';
-    if (adminTab === 'year') return appt.date.startsWith(todayStr.slice(0, 4)) && appt.status === 'confirmada';
-    return true;
-  });
-
-  // Lógica de filtrado por barbero con sus propias subpestañas
+  // Filtrado exclusivo por barbero y su subpestaña seleccionada
   const barberFilteredAppointments = appointments.filter(appt => {
     if (appt.barber !== selectedBarberFilter) return false;
     if (barberSubTab === 'pending') return appt.status === 'pendiente';
     if (barberSubTab === 'cancelled') return appt.status === 'cancelada';
-    if (barberSubTab === 'today') return appt.date === todayStr && appt.status === 'confirmada';
+    if (barberSubTab === 'today') return appt.date === todayStr && appt.status === 'confirmada'; // Solo confirmadas de hoy
     if (barberSubTab === 'week') {
       const apptDate = new Date(appt.date);
       const now = new Date();
@@ -318,160 +302,92 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* PESTAÑAS DE NAVEGACIÓN GENERAL */}
-          <div className="flex flex-wrap gap-2 bg-neutral-900/60 p-3 rounded-2xl border border-neutral-800">
-            {[
-              { id: 'pending', label: `📥 Pendientes (${appointments.filter(a => a.status === 'pendiente').length})` },
-              { id: 'today', label: '📅 Hoy (Confirmadas)' },
-              { id: 'week', label: 'Semana' },
-              { id: 'month', label: 'Mes' },
-              { id: 'year', label: 'Año' },
-              { id: 'cancelled', label: `❌ Canceladas (${appointments.filter(a => a.status === 'cancelada').length})` },
-              { id: 'barbers', label: '✂️ Vista Barberos' },
-            ].map((tab) => (
-              <button key={tab.id} onClick={() => setAdminTab(tab.id as any)} className={`px-5 py-3 rounded-xl text-xs font-bold transition-all ${adminTab === tab.id ? 'bg-amber-400 text-neutral-950 font-black' : 'text-neutral-400 bg-neutral-950/50'}`}>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* LISTADO DE CITAS */}
-          <div className="bg-neutral-900/40 border border-neutral-800 p-6 rounded-3xl space-y-4">
-            {adminTab === 'barbers' ? (
-              <div className="space-y-6">
-                {/* Selector de Barbero */}
-                <div className="flex gap-3 bg-neutral-950 p-4 rounded-2xl border border-neutral-800 items-center justify-between flex-wrap">
-                  <span className="text-xs font-bold text-neutral-300 uppercase">Estación:</span>
-                  <div className="flex gap-2">
-                    {barbersList.map((b) => (
-                      <button key={b} onClick={() => setSelectedBarberFilter(b)} className={`px-4 py-2 rounded-xl text-xs font-bold ${selectedBarberFilter === b ? 'bg-amber-400 text-neutral-950 font-black' : 'bg-neutral-900 text-neutral-400'}`}>{b}</button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Subpestañas de tiempo/estado para cada barbero */}
-                <div className="flex flex-wrap gap-2 bg-neutral-950/80 p-3 rounded-2xl border border-neutral-800">
-                  {[
-                    { id: 'today', label: '📅 Hoy' },
-                    { id: 'pending', label: '📥 Pendientes' },
-                    { id: 'week', label: 'Semana' },
-                    { id: 'month', label: 'Mes' },
-                    { id: 'year', label: 'Año' },
-                    { id: 'cancelled', label: '❌ Canceladas' },
-                  ].map((subTab) => (
-                    <button key={subTab.id} onClick={() => setBarberSubTab(subTab.id as any)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${barberSubTab === subTab.id ? 'bg-green-400 text-neutral-950 font-black' : 'text-neutral-400 bg-neutral-900'}`}>
-                      {subTab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {barberFilteredAppointments.length === 0 ? (
-                  <div className="text-center py-16 text-neutral-500 text-sm">No hay registros para {selectedBarberFilter} en esta vista.</div>
-                ) : (
-                  barberFilteredAppointments.map(appt => (
-                    <div key={appt.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-neutral-950 p-6 rounded-2xl border border-neutral-800 gap-4">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <p className="font-bold text-white text-lg">{appt.client}</p>
-                          <span className="text-xs px-3 py-1 rounded-full bg-neutral-900 text-amber-400 font-bold">{appt.service} (${appt.price} MXN)</span>
-                          <span className="text-xs px-3 py-1 rounded-full bg-neutral-900 text-blue-400 font-bold">Barbero: {appt.barber}</span>
-                          <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase ${appt.status === 'confirmada' ? 'bg-green-500/10 text-green-400' : appt.status === 'cancelada' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`}>{appt.status}</span>
-                        </div>
-                        <p className="text-xs text-neutral-400">📅 Fecha: {appt.date} · ⏰ Hora: {appt.time} · 📞 Tel: {appt.phone}</p>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-                        {appt.status !== 'confirmada' && (
-                          <button 
-                            onClick={async () => {
-                              await updateStatus(appt.id, 'confirmada');
-                              const cleanPhone = appt.phone.replace(/\D/g, '');
-                              const whatsappNumber = cleanPhone.startsWith('52') ? cleanPhone : `521${cleanPhone}`;
-                              const message = `¡Hola ${appt.client}! Te saludamos de Belics Barbershop ✂️. Tu cita para ${appt.service} el día ${appt.date} a las ${appt.time} con ${appt.barber} ha sido *confirmada* con éxito. ¡Te esperamos!`;
-                              window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
-                            }} 
-                            className="bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-neutral-950 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
-                          >
-                            <CheckCircle2 size={16} /> Confirmar y Avisar WhatsApp
-                          </button>
-                        )}
-
-                        {appt.status !== 'cancelada' && (
-                          <button 
-                            onClick={async () => {
-                              await updateStatus(appt.id, 'cancelada');
-                              const cleanPhone = appt.phone.replace(/\D/g, '');
-                              const whatsappNumber = cleanPhone.startsWith('52') ? cleanPhone : `521${cleanPhone}`;
-                              const message = `Hola ${appt.client}, te saludamos de Belics Barbershop. Lamentablemente tu cita para ${appt.service} el día ${appt.date} a las ${appt.time} ha sido cancelada en el sistema. ¿Te gustaría reagendar?`;
-                              window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
-                            }} 
-                            className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
-                          >
-                            <XCircle size={16} /> Cancelar y Avisar WhatsApp
-                          </button>
-                        )}
-
-                        <button onClick={() => deleteAppointment(appt.id)} className="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-red-400 p-3 rounded-xl transition-colors">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
+          {/* VISTA UNICA DE BARBEROS Y SUS CITAS */}
+          <div className="bg-neutral-900/40 border border-neutral-800 p-6 sm:p-8 rounded-3xl space-y-6">
+            
+            {/* Selector de Estación / Barbero */}
+            <div className="flex gap-3 bg-neutral-950 p-4 rounded-2xl border border-neutral-800 items-center justify-between flex-wrap">
+              <span className="text-xs font-bold text-neutral-300 uppercase">Seleccionar Estación:</span>
+              <div className="flex gap-2 flex-wrap">
+                {barbersList.map((b) => (
+                  <button key={b} onClick={() => setSelectedBarberFilter(b)} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${selectedBarberFilter === b ? 'bg-amber-400 text-neutral-950 font-black' : 'bg-neutral-900 text-neutral-400'}`}>{b}</button>
+                ))}
               </div>
-            ) : filteredAppointments.length === 0 ? (
-              <div className="text-center py-20 text-neutral-500 text-sm">No hay registros en esta vista.</div>
-            ) : (
-              filteredAppointments.map((appt) => (
-                <div key={appt.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-neutral-950 p-6 rounded-2xl border border-neutral-800 gap-4">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <p className="font-bold text-white text-lg">{appt.client}</p>
-                      <span className="text-xs px-3 py-1 rounded-full bg-neutral-900 text-amber-400 font-bold">{appt.service} (${appt.price} MXN)</span>
-                      <span className="text-xs px-3 py-1 rounded-full bg-neutral-900 text-blue-400 font-bold">Barbero: {appt.barber}</span>
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase ${appt.status === 'confirmada' ? 'bg-green-500/10 text-green-400' : appt.status === 'cancelada' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`}>{appt.status}</span>
+            </div>
+
+            {/* Subpestañas limpias para el barbero seleccionado */}
+            <div className="flex flex-wrap gap-2 bg-neutral-950/80 p-3 rounded-2xl border border-neutral-800">
+              {[
+                { id: 'today', label: '📅 Hoy (Confirmadas)' },
+                { id: 'pending', label: `📥 Pendientes (${appointments.filter(a => a.barber === selectedBarberFilter && a.status === 'pendiente').length})` },
+                { id: 'week', label: 'Semana' },
+                { id: 'month', label: 'Mes' },
+                { id: 'year', label: 'Año' },
+                { id: 'cancelled', label: '❌ Canceladas' },
+              ].map((subTab) => (
+                <button key={subTab.id} onClick={() => setBarberSubTab(subTab.id as any)} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${barberSubTab === subTab.id ? 'bg-amber-400 text-neutral-950 font-black' : 'text-neutral-400 bg-neutral-900'}`}>
+                  {subTab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Listado de Citas Filtradas */}
+            <div className="space-y-4 pt-2">
+              {barberFilteredAppointments.length === 0 ? (
+                <div className="text-center py-20 text-neutral-500 text-sm">No hay registros para {selectedBarberFilter} en esta vista.</div>
+              ) : (
+                barberFilteredAppointments.map(appt => (
+                  <div key={appt.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-neutral-950 p-6 rounded-2xl border border-neutral-800 gap-4">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <p className="font-bold text-white text-lg">{appt.client}</p>
+                        <span className="text-xs px-3 py-1 rounded-full bg-neutral-900 text-amber-400 font-bold">{appt.service} (${appt.price} MXN)</span>
+                        <span className="text-xs px-3 py-1 rounded-full bg-neutral-900 text-blue-400 font-bold">Barbero: {appt.barber}</span>
+                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase ${appt.status === 'confirmada' ? 'bg-green-500/10 text-green-400' : appt.status === 'cancelada' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`}>{appt.status}</span>
+                      </div>
+                      <p className="text-xs text-neutral-400">📅 Fecha: {appt.date} · ⏰ Hora: {appt.time} · 📞 Tel: {appt.phone}</p>
                     </div>
-                    <p className="text-xs text-neutral-400">📅 Fecha: {appt.date} · ⏰ Hora: {appt.time} · 📞 Tel: {appt.phone}</p>
-                  </div>
-                  
-                  <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-                    {appt.status !== 'confirmada' && (
-                      <button 
-                        onClick={async () => {
-                          await updateStatus(appt.id, 'confirmada');
-                          const cleanPhone = appt.phone.replace(/\D/g, '');
-                          const whatsappNumber = cleanPhone.startsWith('52') ? cleanPhone : `521${cleanPhone}`;
-                          const message = `¡Hola ${appt.client}! Te saludamos de Belics Barbershop ✂️. Tu cita para ${appt.service} el día ${appt.date} a las ${appt.time} con ${appt.barber} ha sido *confirmada* con éxito. ¡Te esperamos!`;
-                          window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
-                        }} 
-                        className="bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-neutral-950 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
-                      >
-                        <CheckCircle2 size={16} /> Confirmar y Avisar WhatsApp
-                      </button>
-                    )}
 
-                    {appt.status !== 'cancelada' && (
-                      <button 
-                        onClick={async () => {
-                          await updateStatus(appt.id, 'cancelada');
-                          const cleanPhone = appt.phone.replace(/\D/g, '');
-                          const whatsappNumber = cleanPhone.startsWith('52') ? cleanPhone : `521${cleanPhone}`;
-                          const message = `Hola ${appt.client}, te saludamos de Belics Barbershop. Lamentablemente tu cita para ${appt.service} el día ${appt.date} a las ${appt.time} ha sido cancelada en el sistema. ¿Te gustaría reagendar?`;
-                          window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
-                        }} 
-                        className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
-                      >
-                        <XCircle size={16} /> Cancelar y Avisar WhatsApp
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+                      {appt.status !== 'confirmada' && (
+                        <button 
+                          onClick={async () => {
+                            await updateStatus(appt.id, 'confirmada');
+                            const cleanPhone = appt.phone.replace(/\D/g, '');
+                            const whatsappNumber = cleanPhone.startsWith('52') ? cleanPhone : `521${cleanPhone}`;
+                            const message = `¡Hola ${appt.client}! Te saludamos de Belics Barbershop ✂️. Tu cita para ${appt.service} el día ${appt.date} a las ${appt.time} con ${appt.barber} ha sido *confirmada* con éxito. ¡Te esperamos!`;
+                            window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                          }} 
+                          className="bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-neutral-950 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                        >
+                          <CheckCircle2 size={16} /> Confirmar y Avisar WhatsApp
+                        </button>
+                      )}
 
-                    <button onClick={() => deleteAppointment(appt.id)} className="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-red-400 p-3 rounded-xl transition-colors">
-                      <Trash2 size={18} />
-                    </button>
+                      {appt.status !== 'cancelada' && (
+                        <button 
+                          onClick={async () => {
+                            await updateStatus(appt.id, 'cancelada');
+                            const cleanPhone = appt.phone.replace(/\D/g, '');
+                            const whatsappNumber = cleanPhone.startsWith('52') ? cleanPhone : `521${cleanPhone}`;
+                            const message = `Hola ${appt.client}, te saludamos de Belics Barbershop. Lamentablemente tu cita para ${appt.service} el día ${appt.date} a las ${appt.time} ha sido cancelada en el sistema. ¿Te gustaría reagendar?`;
+                            window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                          }} 
+                          className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                        >
+                          <XCircle size={16} /> Cancelar y Avisar WhatsApp
+                        </button>
+                      )}
+
+                      <button onClick={() => deleteAppointment(appt.id)} className="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-red-400 p-3 rounded-xl transition-colors">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
+
           </div>
 
           {/* MODAL CITA MANUAL */}
