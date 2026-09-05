@@ -9,7 +9,6 @@ export default function AdminDashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   
-  // Pestañas organizadas: Vista Barberos como principal, Hoy, Semana, Mes, Canceladas y Añadir Cita
   const [adminTab, setAdminTab] = useState<'barbers' | 'today' | 'week' | 'month' | 'cancelled' | 'create'>('barbers');
   const [selectedBarberFilter, setSelectedBarberFilter] = useState<'Cholo' | 'Eduardo' | 'Gordito'>('Cholo');
   
@@ -17,7 +16,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
 
-  // Estados para el formulario de creación manual de citas por el admin
+  // Estados para el formulario de creación manual de citas
   const [newClient, setNewClient] = useState('');
   const [newService, setNewService] = useState('Corte General');
   const [newPrice, setNewPrice] = useState('200');
@@ -112,18 +111,26 @@ export default function AdminDashboardPage() {
       const res = await fetch('/api/citas');
       const data = await res.json();
       if (Array.isArray(data)) {
-        const formatted = data.map((item: any, index: number) => ({
-          id: item.id || index.toString(),
-          client: item.clientname || item.clientName || item.client || item.nombre || 'Cliente',
-          service: item.service || item.corte || 'Corte General',
-          barber: item.barbername || item.barberName || item.barber || item.barbero || 'Cholo',
-          time: item.appointmenttime || item.appointmentTime || item.time || item.hora || '10:00 AM',
-          phone: item.clientphone || item.clientPhone || item.phone || item.telefono || 'S/N',
-          date: item.appointmentdate || item.appointmentDate || item.date || item.fecha || new Date().toISOString().split('T')[0],
-          note: item.note || item.nota || 'Sin notas adicionales.',
-          status: item.status || 'pendiente',
-          price: Number(item.price || item.precio || 200)
-        }));
+        const formatted = data.map((item: any, index: number) => {
+          // Limpieza de fecha para asegurar que sea formato YYYY-MM-DD
+          let rawDate = item.appointmentdate || item.appointmentDate || item.date || item.fecha || new Date().toISOString().split('T')[0];
+          if (rawDate.includes('T')) {
+            rawDate = rawDate.split('T')[0];
+          }
+
+          return {
+            id: item.id || item._id || index.toString(),
+            client: item.clientname || item.clientName || item.client || item.nombre || 'Cliente',
+            service: item.service || item.corte || 'Corte General',
+            barber: item.barbername || item.barberName || item.barber || item.barbero || 'Cholo',
+            time: item.appointmenttime || item.appointmentTime || item.time || item.hora || '10:00 AM',
+            phone: item.clientphone || item.clientPhone || item.phone || item.telefono || 'S/N',
+            date: rawDate,
+            note: item.note || item.nota || '',
+            status: (item.status || 'pendiente').toLowerCase().trim(),
+            price: Number(item.price || item.precio || 200)
+          };
+        });
         setAppointments(formatted);
       }
     } catch (err) {
@@ -158,12 +165,16 @@ export default function AdminDashboardPage() {
 
   const updateStatus = async (id: string, newStatus: string) => {
     try {
-      await fetch('/api/citas', {
+      const res = await fetch('/api/citas', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status: newStatus })
       });
-      fetchAppointments();
+      if (res.ok) {
+        fetchAppointments();
+      } else {
+        alert('No se pudo actualizar el estado.');
+      }
     } catch (err) {
       console.error(err);
     }
@@ -172,14 +183,17 @@ export default function AdminDashboardPage() {
   const deleteAppointment = async (id: string) => {
     if (!confirm('¿Estás seguro de eliminar este registro?')) return;
     try {
-      await fetch(`/api/citas?id=${id}`, { method: 'DELETE' });
-      fetchAppointments();
+      const res = await fetch(`/api/citas?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchAppointments();
+      } else {
+        alert('No se pudo eliminar el registro.');
+      }
     } catch (err) {
       console.error(err);
     }
   };
 
-  // Crear cita manualmente desde el panel de admin
   const handleCreateAppointmentManually = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClient.trim()) {
@@ -200,7 +214,7 @@ export default function AdminDashboardPage() {
           appointmentTime: newTime,
           clientPhone: newPhone,
           note: newNote || 'Creada manualmente por el Administrador',
-          status: 'confirmada' // Las hechas por el admin entran directo como confirmadas o pendientes según prefieras
+          status: 'confirmada'
         })
       });
 
@@ -209,7 +223,7 @@ export default function AdminDashboardPage() {
         setNewClient('');
         setNewNote('');
         fetchAppointments();
-        setAdminTab('barbers'); // Regresar a la vista principal de barberos
+        setAdminTab('barbers');
       } else {
         alert('Error al registrar la cita.');
       }
@@ -223,17 +237,22 @@ export default function AdminDashboardPage() {
   const todayConfirmedAppointments = appointments.filter(a => a.date === todayStr && a.status === 'confirmada');
   const totalRevenueToday = todayConfirmedAppointments.reduce((acc, curr) => acc + curr.price, 0);
 
-  // Funciones de cálculo para semana y mes
   const isCurrentWeek = (dateStr: string) => {
-    const currDate = new Date(dateStr);
+    if (!dateStr) return false;
+    const currDate = new Date(dateStr + 'T00:00:00');
     const now = new Date();
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-    const endOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + 6));
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0,0,0,0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23,59,59,999);
     return currDate >= startOfWeek && currDate <= endOfWeek;
   };
 
   const isCurrentMonth = (dateStr: string) => {
-    const currDate = new Date(dateStr);
+    if (!dateStr) return false;
+    const currDate = new Date(dateStr + 'T00:00:00');
     const now = new Date();
     return currDate.getMonth() === now.getMonth() && currDate.getFullYear() === now.getFullYear();
   };
@@ -310,7 +329,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* CONTROL DE DISPONIBILIDAD DE BARBEROS */}
+          {/* ESTADO DEL PERSONAL */}
           <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-3xl space-y-4">
             <h2 className="text-sm font-black text-amber-400 uppercase tracking-wider">⚡ Estado del Personal (Descanso / Inactivo)</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
@@ -341,7 +360,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* TARJETAS DE MÉTRICAS */}
+          {/* MÉTRICAS */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="bg-neutral-900/60 p-6 rounded-3xl border border-neutral-800 flex items-center gap-4">
               <Users className="text-amber-400" size={28} />
@@ -366,7 +385,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* BARRA DE NAVEGACIÓN DE PESTAÑAS ORGANIZADA */}
+          {/* PESTAÑAS DE NAVEGACIÓN */}
           <div className="flex flex-wrap gap-2 bg-neutral-900/60 p-3 rounded-2xl border border-neutral-800 items-center justify-between">
             <div className="flex flex-wrap gap-2">
               <button 
@@ -409,10 +428,10 @@ export default function AdminDashboardPage() {
             </button>
           </div>
 
-          {/* CONTENEDOR PRINCIPAL SEGÚN LA PESTAÑA */}
+          {/* CONTENIDO */}
           <div className="bg-neutral-900/40 border border-neutral-800 p-6 rounded-3xl space-y-6">
             
-            {/* 1. VISTA DE BARBEROS (CADA UNO CON SU SECCIÓN DE PENDIENTES) */}
+            {/* VISTA BARBEROS */}
             {adminTab === 'barbers' && (
               <div className="space-y-6">
                 <div className="flex gap-3 bg-neutral-950 p-4 rounded-2xl border border-neutral-800 items-center justify-between flex-wrap">
@@ -452,13 +471,13 @@ export default function AdminDashboardPage() {
                             {appt.note && <p className="text-xs text-amber-200/80 bg-neutral-900 p-2 rounded-lg mt-1">Nota: {appt.note}</p>}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <button onClick={() => updateStatus(appt.id, 'confirmada')} className="bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-neutral-950 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1">
+                            <button onClick={() => updateStatus(appt.id, 'confirmada')} className="bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-neutral-950 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
                               <CheckCircle2 size={14} /> Confirmar
                             </button>
-                            <button onClick={() => updateStatus(appt.id, 'cancelada')} className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1">
+                            <button onClick={() => updateStatus(appt.id, 'cancelada')} className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
                               <XCircle size={14} /> Cancelar
                             </button>
-                            <button onClick={() => deleteAppointment(appt.id)} className="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-red-400 p-2.5 rounded-xl">
+                            <button onClick={() => deleteAppointment(appt.id)} className="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-red-400 p-2.5 rounded-xl cursor-pointer">
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -469,7 +488,7 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* 2. VISTA HOY (SOLO CONFIRMADAS) */}
+            {/* HOY */}
             {adminTab === 'today' && (
               <div className="space-y-4">
                 <h3 className="text-sm font-black text-green-400 uppercase tracking-wider">📅 Citas Confirmadas para Hoy ({todayStr})</h3>
@@ -491,7 +510,7 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* 3. VISTA SEMANA */}
+            {/* SEMANA */}
             {adminTab === 'week' && (
               <div className="space-y-4">
                 <h3 className="text-sm font-black text-blue-400 uppercase tracking-wider">📆 Citas de la Semana Actual</h3>
@@ -513,7 +532,7 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* 4. VISTA MES */}
+            {/* MES */}
             {adminTab === 'month' && (
               <div className="space-y-4">
                 <h3 className="text-sm font-black text-purple-400 uppercase tracking-wider">📊 Citas del Mes Actual</h3>
@@ -535,7 +554,7 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* 5. VISTA CANCELADAS */}
+            {/* CANCELADAS */}
             {adminTab === 'cancelled' && (
               <div className="space-y-4">
                 <h3 className="text-sm font-black text-red-400 uppercase tracking-wider">❌ Registro de Citas Canceladas</h3>
@@ -548,7 +567,7 @@ export default function AdminDashboardPage() {
                         <p className="font-bold text-white text-base">{appt.client} - <span className="text-amber-400">{appt.service}</span></p>
                         <p className="text-xs text-neutral-400 mt-1">📅 Fecha: {appt.date} · ⏰ Hora: {appt.time} · ✂️ Barbero: {appt.barber}</p>
                       </div>
-                      <button onClick={() => deleteAppointment(appt.id)} className="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-red-400 p-3 rounded-xl">
+                      <button onClick={() => deleteAppointment(appt.id)} className="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-red-400 p-3 rounded-xl cursor-pointer">
                         <Trash2 size={18} />
                       </button>
                     </div>
@@ -557,7 +576,7 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* 6. FORMULARIO PARA CREAR CITA MANUALMENTE */}
+            {/* CREAR CITA */}
             {adminTab === 'create' && (
               <div className="max-w-2xl mx-auto space-y-6">
                 <div>
@@ -660,10 +679,10 @@ export default function AdminDashboardPage() {
                   </div>
 
                   <div className="flex gap-3 pt-2">
-                    <button type="submit" className="flex-1 bg-amber-400 text-neutral-950 font-black py-3.5 rounded-xl hover:bg-amber-300 transition-all shadow-lg text-sm">
+                    <button type="submit" className="flex-1 bg-amber-400 text-neutral-950 font-black py-3.5 rounded-xl hover:bg-amber-300 transition-all shadow-lg text-sm cursor-pointer">
                       Guardar y Registrar Cita
                     </button>
-                    <button type="button" onClick={() => setAdminTab('barbers')} className="bg-neutral-800 text-white font-bold px-6 py-3.5 rounded-xl hover:bg-neutral-700 transition-all text-xs">
+                    <button type="button" onClick={() => setAdminTab('barbers')} className="bg-neutral-800 text-white font-bold px-6 py-3.5 rounded-xl hover:bg-neutral-700 transition-all text-xs cursor-pointer">
                       Cancelar
                     </button>
                   </div>
