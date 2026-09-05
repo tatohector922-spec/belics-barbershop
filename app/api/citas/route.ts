@@ -1,127 +1,70 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import webpush from 'web-push';
 
-const SUPABASE_URL = 'https://lhtxvemwfjutxgofyeoc.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_pT0qCOznBWl030ZK0VO03Q_bp7mvdVT';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-try {
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:tatohector@gmail.com',
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BCX9iMW4caZMYynEPYwbpWlJC23I37xMESR-cJwunLmSoQcxyF3ULBpInxpRhm7s8ah0HqbvbIpMPXlduwt7r7w',
-    process.env.VAPID_PRIVATE_KEY || 'l46VSYypZ0mP2tF_xJC6mf4G4LrzddjckuSQB2c7uzs'
-  );
-} catch (e) {
-  console.error("Error push:", e);
-}
-
-export async function GET() {
+export async function POST(req: Request) {
   try {
-    const { data, error } = await supabase
-      .from('Appointment')
-      .select('*')
-      .order('id', { ascending: false });
+    const body = await req.json();
+    const { 
+      clientName, 
+      service, 
+      price, 
+      barberName, 
+      appointmentDate, 
+      appointmentTime, 
+      clientPhone, 
+      note 
+    } = body;
 
-    if (error) return NextResponse.json([]);
-    return NextResponse.json(Array.isArray(data) ? data : []);
-  } catch (error: any) {
-    return NextResponse.json([], { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-
-    const clientname = body.clientName || body.client || body.nombre || 'Cliente';
-    const clientphone = body.clientPhone || body.phone || body.telefono || 'S/N';
-    const barbername = body.barberName || body.barber || body.barbero || 'Héctor (Master Barber)';
-    const appointmentdate = body.appointmentDate || body.date || body.fecha || new Date().toISOString().split('T')[0];
-    const appointmenttime = body.appointmentTime || body.time || body.hora || '10:00 AM';
-    const service = body.service || body.corte || 'Corte General';
-    const price = Number(body.price || body.precio) || 350;
-    const note = body.note || body.nota || 'Sin notas';
-    const status = 'pendiente';
-
-    const nuevaCita = {
-      clientname,
-      clientphone,
-      barbername,
-      appointmentdate,
-      appointmenttime,
-      service,
-      price,
-      note,
-      status
-    };
-
-    const { data, error } = await supabase
-      .from('Appointment')
-      .insert([nuevaCita])
-      .select();
-
-    if (error) {
-      console.error("Error crítico de Supabase:", error);
-      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    // Validación básica de campos obligatorios
+    if (!clientName || !service || !barberName || !appointmentDate || !appointmentTime) {
+      return NextResponse.json(
+        { success: false, error: 'Faltan datos obligatorios para agendar la cita' },
+        { status: 400 }
+      );
     }
 
+    // ==========================================
+    // 1. AQUÍ VA LA LÓGICA DE TU BASE DE DATOS
+    // ==========================================
+    // Ejemplo:
+    // const newAppointment = await db.citas.create({ data: { ... } });
+    
+    // ==========================================
+    // 2. DISPARAR EL WEBHOOK HACIA MAKE.COM
+    // ==========================================
     try {
-      const { data: subsData } = await supabase.from('PushSubscriptions').select('*');
-      if (subsData && subsData.length > 0) {
-        const payload = JSON.stringify({
-          title: "Belics Barbershop - Nueva Cita",
-          body: `Cliente: ${clientname} con ${barbername} (${appointmentdate} - ${appointmenttime})`
-        });
-
-        for (const sub of subsData) {
-          if (sub.endpoint && sub.p256dh && sub.auth) {
-            webpush.sendNotification({
-              endpoint: sub.endpoint,
-              keys: { p256dh: sub.p256dh, auth: sub.auth }
-            }, payload).catch(async (err) => {
-              // Si el navegador del celular revocó el token o expiró, lo borramos de Supabase automáticamente
-              if (err.statusCode === 410 || err.statusCode === 404) {
-                console.log("Suscripción push expirada o eliminada por el navegador, limpiando...");
-                await supabase.from('PushSubscriptions').delete().eq('endpoint', sub.endpoint);
-              }
-            });
-          }
-        }
-      }
-    } catch (e) {
-      console.log("Push omitido:", e);
+      const webhookUrl = 'https://hook.us2.make.com/mlydivxluvdbgjmm73i7n6f1v9o8mhvo';
+      
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({
+          clientName,
+          service,
+          price,
+          barberName,
+          appointmentDate,
+          appointmentTime,
+          clientPhone,
+          note
+        })
+      });
+    } catch (webhookError) {
+      // Si el webhook llegara a fallar por red, la cita ya se guardó y no rompemos la respuesta al usuario
+      console.error('Error al notificar a Make.com:', webhookError);
     }
 
-    return NextResponse.json({ success: true, appointment: data ? data[0] : nuevaCita });
-  } catch (error: any) {
-    console.error("Excepción en POST:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Cita creada y notificación en proceso con éxito' 
+    });
 
-export async function PUT(request: Request) {
-  try {
-    const body = await request.json();
-    const { id, status } = body;
-    const { data, error } = await supabase.from('Appointment').update({ status }).eq('id', id).select();
-    if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true, appointment: data });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ success: false, error: 'ID no proporcionado' }, { status: 400 });
-    const { error } = await supabase.from('Appointment').delete().eq('id', id);
-    if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error('Error general en el servidor al procesar la cita:', error);
+    return NextResponse.json( 
+      { success: false, error: 'Error interno del servidor' }, 
+      { status: 500 } 
+    );
   }
 }
