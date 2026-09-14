@@ -80,12 +80,13 @@ export async function POST(request: Request) {
                         `⏰ *Hora:* ${appointmenttime}\n` +
                         `🛠️ *Servicio:* ${service}\n` +
                         `💬 *Notas:* ${note}\n\n` +
-                        `⚠️ *Aviso:* Entren al panel de administración para confirmarla.`;
+                        `⚠️ *Aviso:* Entren al panel para confirmarla.`;
 
-        // CREDENCIALES CORREGIDAS SEGÚN LA CAPTURA DE PANTALLA
         const idInstance = "710522729158";
-        const apiToken = "d29256a733084b2206481b1a54cb4f7879d49e2be3a24767ab";
-        const url = `https://api.green-api.com/waInstance${idInstance}/sendMessage/${apiToken}`;
+        const apiToken = "d29256a733084b2286481b1a54cb4f7879d49e2be3a24767ab";
+        
+        // ⚠️ LA URL CORREGIDA APUNTANDO AL SERVIDOR 7105
+        const url = `https://7105.api.greenapi.com/waInstance${idInstance}/sendMessage/${apiToken}`;
 
         const waResponse = await fetch(url, {
           method: 'POST',
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
         });
 
         const textResponse = await waResponse.text();
+        console.log("Status Http:", waResponse.status);
         console.log("Respuesta de Green-API al grupo:", textResponse);
       }
     } catch (waError) {
