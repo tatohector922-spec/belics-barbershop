@@ -82,8 +82,9 @@ export async function POST(request: Request) {
                         `💬 *Notas:* ${note}\n\n` +
                         `⚠️ *Aviso:* Entren al panel de administración para confirmarla.`;
 
-        const idInstance = "71052279158";
-        const apiToken = "d29256a73304b2286481b1a54cb4f7879d49e2be3a24767ab";
+        // CREDENCIALES CORREGIDAS SEGÚN LA CAPTURA DE PANTALLA
+        const idInstance = "710522729158";
+        const apiToken = "d29256a733084b2206481b1a54cb4f7879d49e2be3a24767ab";
         const url = `https://api.green-api.com/waInstance${idInstance}/sendMessage/${apiToken}`;
 
         const waResponse = await fetch(url, {
