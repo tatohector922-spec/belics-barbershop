@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
-    // --- ENVÍO DE WHATSAPP AL GRUPO CON GREEN-API ---
+    // --- ENVÍO DE WHATSAPP AL GRUPO ---
     try {
       const groupChatId = "120363409870120596@g.us"; 
 
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     } catch (waError) {
       console.error("Error al enviar WhatsApp al grupo:", waError);
     }
-    // ----------------------------------------------
+    // ---------------------------------
 
     try {
       const { data: subsData } = await supabase.from('PushSubscriptions').select('*');
