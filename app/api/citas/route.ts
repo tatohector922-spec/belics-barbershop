@@ -67,52 +67,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
-    // --- ENVÍO DE WHATSAPP DIRECTO CON GREEN-API (CON DEPURO CRUDO) ---
+    // --- ENVÍO DE WHATSAPP AL GRUPO CON GREEN-API ---
     try {
-      let targetPhone = "";
-      const lowerBarber = barbername.toLowerCase();
+      const groupChatId = "120363409870120596@g.us"; 
 
-      if (lowerBarber.includes("cholo")) {
-        targetPhone = "5216673602477";
-      } else if (lowerBarber.includes("eduardo")) {
-        targetPhone = "5216675757736";
-      } else if (lowerBarber.includes("gordito")) {
-        targetPhone = "5216674535329";
-      } else {
-        targetPhone = "5216673602477"; 
-      }
-
-      if (targetPhone) {
-        const message = `💈 *¡Nueva Cita Agendada!*\n\n` +
+      if (groupChatId && groupChatId.includes("@g.us")) {
+        const message = `🔔 *¡Nueva Cita Agendada!*\n\n` +
+                        `✂️ *Barbero Asignado:* *${barbername}*\n\n` +
                         `👤 *Cliente:* ${clientname}\n` +
                         `📞 *Teléfono:* ${clientphone}\n` +
                         `📅 *Fecha:* ${appointmentdate}\n` +
                         `⏰ *Hora:* ${appointmenttime}\n` +
-                        `✂️ *Servicio:* ${service}\n\n` +
-                        `⚠️ *Aviso:* Recuerda entrar al panel de administración para confirmarla.`;
+                        `🛠️ *Servicio:* ${service}\n` +
+                        `💬 *Notas:* ${note}\n\n` +
+                        `⚠️ *Aviso:* Entren al panel de administración para confirmarla.`;
 
         const idInstance = "71052279158";
         const apiToken = "d29256a73304b2286481b1a54cb4f7879d49e2be3a24767ab";
         const url = `https://api.green-api.com/waInstance${idInstance}/sendMessage/${apiToken}`;
 
-        console.log(`Intentando enviar WhatsApp a ${targetPhone} para barbero: ${barbername}`);
-
         const waResponse = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            chatId: `${targetPhone}@c.us`,
+            chatId: groupChatId,
             message: message
           })
         });
 
         const textResponse = await waResponse.text();
-        console.log("Respuesta cruda de Green-API:", textResponse);
+        console.log("Respuesta de Green-API al grupo:", textResponse);
       }
     } catch (waError) {
-      console.error("Error al enviar WhatsApp por Green-API:", waError);
+      console.error("Error al enviar WhatsApp al grupo:", waError);
     }
-    // -----------------------------------------------------------------
+    // ----------------------------------------------
 
     try {
       const { data: subsData } = await supabase.from('PushSubscriptions').select('*');
