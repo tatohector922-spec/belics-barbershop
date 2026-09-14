@@ -67,12 +67,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
-    // --- ENVÍO DE WHATSAPP DIRECTO CON GREEN-API (CORREGIDO PARA DETECTAR TEXTOS LARGOS) ---
+    // --- ENVÍO DE WHATSAPP DIRECTO CON GREEN-API (CON DEPURO CRUDO) ---
     try {
       let targetPhone = "";
       const lowerBarber = barbername.toLowerCase();
 
-      // Buscamos según las palabras clave que vienen del selector de tu web
       if (lowerBarber.includes("cholo")) {
         targetPhone = "5216673602477";
       } else if (lowerBarber.includes("eduardo")) {
@@ -80,7 +79,6 @@ export async function POST(request: Request) {
       } else if (lowerBarber.includes("gordito")) {
         targetPhone = "5216674535329";
       } else {
-        // Si eligen "Cualquier Barbero Disponible", por defecto se lo mandamos a Cholo o al primero
         targetPhone = "5216673602477"; 
       }
 
@@ -97,6 +95,8 @@ export async function POST(request: Request) {
         const apiToken = "d29256a73304b2286481b1a54cb4f7879d49e2be3a24767ab";
         const url = `https://api.green-api.com/waInstance${idInstance}/sendMessage/${apiToken}`;
 
+        console.log(`Intentando enviar WhatsApp a ${targetPhone} para barbero: ${barbername}`);
+
         const waResponse = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -106,13 +106,13 @@ export async function POST(request: Request) {
           })
         });
 
-        const waResult = await waResponse.json();
-        console.log("Respuesta de Green-API:", waResult);
+        const textResponse = await waResponse.text();
+        console.log("Respuesta cruda de Green-API:", textResponse);
       }
     } catch (waError) {
       console.error("Error al enviar WhatsApp por Green-API:", waError);
     }
-    // ---------------------------------------------------------------------------------
+    // -----------------------------------------------------------------
 
     try {
       const { data: subsData } = await supabase.from('PushSubscriptions').select('*');
