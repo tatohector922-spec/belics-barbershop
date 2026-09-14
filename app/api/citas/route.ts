@@ -67,6 +67,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
+    // --- ENVÍO DE WHATSAPP DIRECTO CON GREEN-API ---
+    try {
+      const barberNumbers: Record<string, string> = {
+        "Cholo": "5216673602477",       
+        "Eduardo": "5216675757736",     
+        "Gordito Belics": "5216674535329" 
+      };
+
+      const selectedBarber = Object.keys(barberNumbers).find(b => barbername.includes(b)) || barbername;
+      const targetPhone = barberNumbers[selectedBarber];
+
+      if (targetPhone) {
+        const message = `💈 *¡Nueva Cita Agendada!*\n\n` +
+                        `👤 *Cliente:* ${clientname}\n` +
+                        `📞 *Teléfono:* ${clientphone}\n` +
+                        `📅 *Fecha:* ${appointmentdate}\n` +
+                        `⏰ *Hora:* ${appointmenttime}\n` +
+                        `✂️ *Servicio:* ${service}\n\n` +
+                        `⚠️ *Aviso:* Recuerda entrar al panel de administración para confirmarla.`;
+
+        const idInstance = "71052279158";
+        const apiToken = "d29256a73304b2286481b1a54cb4f7879d49e2be3a24767ab";
+        const url = `https://api.green-api.com/waInstance${idInstance}/sendMessage/${apiToken}`;
+
+        await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chatId: `${targetPhone}@c.us`,
+            message: message
+          })
+        });
+      }
+    } catch (waError) {
+      console.error("Error al enviar WhatsApp por Green-API:", waError);
+    }
+    // ----------------------------------------------
+
     try {
       const { data: subsData } = await supabase.from('PushSubscriptions').select('*');
       if (subsData && subsData.length > 0) {
@@ -81,7 +119,6 @@ export async function POST(request: Request) {
               endpoint: sub.endpoint,
               keys: { p256dh: sub.p256dh, auth: sub.auth }
             }, payload).catch(async (err) => {
-              // Si el navegador del celular revocó el token o expiró, lo borramos de Supabase automáticamente
               if (err.statusCode === 410 || err.statusCode === 404) {
                 console.log("Suscripción push expirada o eliminada por el navegador, limpiando...");
                 await supabase.from('PushSubscriptions').delete().eq('endpoint', sub.endpoint);
