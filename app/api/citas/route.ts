@@ -67,16 +67,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
-    // --- ENVÍO DE WHATSAPP DIRECTO CON GREEN-API ---
+    // --- ENVÍO DE WHATSAPP DIRECTO CON GREEN-API (CORREGIDO PARA DETECTAR TEXTOS LARGOS) ---
     try {
-      const barberNumbers: Record<string, string> = {
-        "Cholo": "5216673602477",       
-        "Eduardo": "5216675757736",     
-        "Gordito Belics": "5216674535329" 
-      };
+      let targetPhone = "";
+      const lowerBarber = barbername.toLowerCase();
 
-      const selectedBarber = Object.keys(barberNumbers).find(b => barbername.includes(b)) || barbername;
-      const targetPhone = barberNumbers[selectedBarber];
+      // Buscamos según las palabras clave que vienen del selector de tu web
+      if (lowerBarber.includes("cholo")) {
+        targetPhone = "5216673602477";
+      } else if (lowerBarber.includes("eduardo")) {
+        targetPhone = "5216675757736";
+      } else if (lowerBarber.includes("gordito")) {
+        targetPhone = "5216674535329";
+      } else {
+        // Si eligen "Cualquier Barbero Disponible", por defecto se lo mandamos a Cholo o al primero
+        targetPhone = "5216673602477"; 
+      }
 
       if (targetPhone) {
         const message = `💈 *¡Nueva Cita Agendada!*\n\n` +
@@ -91,7 +97,7 @@ export async function POST(request: Request) {
         const apiToken = "d29256a73304b2286481b1a54cb4f7879d49e2be3a24767ab";
         const url = `https://api.green-api.com/waInstance${idInstance}/sendMessage/${apiToken}`;
 
-        await fetch(url, {
+        const waResponse = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -99,11 +105,14 @@ export async function POST(request: Request) {
             message: message
           })
         });
+
+        const waResult = await waResponse.json();
+        console.log("Respuesta de Green-API:", waResult);
       }
     } catch (waError) {
       console.error("Error al enviar WhatsApp por Green-API:", waError);
     }
-    // ----------------------------------------------
+    // ---------------------------------------------------------------------------------
 
     try {
       const { data: subsData } = await supabase.from('PushSubscriptions').select('*');
