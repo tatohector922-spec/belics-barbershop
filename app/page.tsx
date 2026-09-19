@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MapPin, Phone, Calendar, Clock, Scissors, Star, ShieldCheck, Trash2, Lock, CheckCircle2, XCircle, Users, DollarSign, TrendingUp, Sparkles, Award, Flame, MessageSquare, ArrowRight, Check, UserCheck, ThumbsUp, Smile, Send } from 'lucide-react';
+// IMPORTAMOS LA GALERÍA
+import Galeria from './components/Galeria';
 
 export default function BelicsMasterApp() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -258,7 +260,8 @@ export default function BelicsMasterApp() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <div className="flex items-center gap-3 cursor-pointer group">
             <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-400/80 shadow-[0_0_20px_rgba(251,191,36,0.4)] group-hover:scale-110 transition-transform bg-neutral-900 flex items-center justify-center">
-              <img src="/image.png" alt="Logo Belics" className="w-full h-full object-cover" />
+              {/* LOGO ACTUALIZADO */}
+              <img src="/icono-cita.png" alt="Logo Belics" className="w-full h-full object-cover" />
             </div>
             <div>
               <span className="text-xl font-black tracking-widest uppercase bg-clip-text text-transparent bg-gradient-to-r from-white via-neutral-200 to-neutral-400 block leading-none">
@@ -272,6 +275,7 @@ export default function BelicsMasterApp() {
             <a href="#inicio" className="hover:text-amber-400 transition-colors">INICIO</a>
             <a href="#resenas" className="hover:text-amber-400 transition-colors">BARBEROS Y RESEÑAS</a>
             <a href="#servicios" className="hover:text-amber-400 transition-colors">SERVICIOS</a>
+            <a href="#galeria" className="hover:text-amber-400 transition-colors">GALERÍA</a>
             <a href="#cortes" className="hover:text-amber-400 transition-colors">ESTILOS</a>
             <a href="#ubicacion" className="hover:text-amber-400 transition-colors">UBICACIÓN</a>
           </div>
@@ -458,6 +462,9 @@ export default function BelicsMasterApp() {
           </div>
         </div>
       </section>
+
+      {/* GALERÍA AGREGADA */}
+      <Galeria />
 
       {/* ESTILOS Y CORTES */}
       <section id="cortes" className="py-24 bg-[#070708] border-t border-neutral-900">
